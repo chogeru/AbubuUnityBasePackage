@@ -1,6 +1,7 @@
 using Abubu.Audio;
 using Abubu.Effects;
 using Abubu.Events;
+using Abubu.Pause;
 using Abubu.Pool;
 using Abubu.Save;
 using Abubu.Scene;
@@ -120,5 +121,28 @@ namespace Abubu
         public static T Load<T>(string key, T defaultValue = default) => Service != null ? Service.Load(key, defaultValue) : defaultValue;
         public static bool Exists(string key) => Service?.Exists(key) ?? false;
         public static void Delete(string key) => Service?.Delete(key);
+    }
+
+    /// <summary>
+    /// ポーズの static ショートカット。owner には呼び出し元 (this) を渡す。
+    /// <code>
+    /// GamePause.Pause(this);
+    /// GamePause.Resume(this);
+    /// </code>
+    /// </summary>
+    public static class GamePause
+    {
+        public static IPauseService Service => AbubuServices.TryResolve<IPauseService>();
+
+        public static bool IsPaused => Service?.IsPaused.CurrentValue ?? false;
+        public static void Pause(object owner) => Service?.Pause(owner);
+        public static void Resume(object owner) => Service?.Resume(owner);
+        public static void Toggle(object owner)
+        {
+            var service = Service;
+            if (service == null) return;
+            if (service.IsPausedBy(owner)) service.Resume(owner);
+            else service.Pause(owner);
+        }
     }
 }

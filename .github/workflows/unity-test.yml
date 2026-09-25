@@ -1,6 +1,7 @@
 # Unity のコンパイルと EditMode テストを実行する
 # 必要な secrets: UNITY_LICENSE (Personal は .ulf の中身), UNITY_EMAIL, UNITY_PASSWORD
 # 取得方法: https://game.ci/docs/github/activation
+# secrets が未登録 (fork からの PR を含む) の場合は、失敗させずにスキップする
 name: Unity Test
 
 on:
@@ -9,18 +10,54 @@ on:
   pull_request:
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      has_license: ${{ steps.check.outputs.has_license }}
+    steps:
+      - id: check
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::UNITY_LICENSE が未登録のため Unity のテストをスキップしました (README の CI の節を参照)"
+            echo "has_license=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: check
+    if: needs.check.outputs.has_license == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # full: 開発プロジェクトそのまま / minimal: 必須の依存だけ (任意モジュールが無くてもコンパイルできるかの検証)
+        config: [full, minimal]
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
 
+      - name: Remove optional packages (minimal)
+        if: matrix.config == 'minimal'
+        working-directory: AbubuUnityBasePackage/Packages
+        run: |
+          jq 'del(.dependencies["com.cysharp.messagepipe", "com.cysharp.messagepipe.zenject",
+                               "com.unity.addressables", "jp.co.cyberagent.smartaddresser",
+                               "com.tanitaka-tech.state-variable", "com.tanitaka-tech.unity-process-manager",
+                               "net.tnrd.serializableinterface", "com.annulusgames.lucid-random",
+                               "com.annulusgames.tween-playables", "com.annulusgames.scene-system"])' \
+            manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+          rm -f packages-lock.json
+          cat manifest.json
+
       - uses: actions/cache@v4
         with:
           path: AbubuUnityBasePackage/Library
-          key: Library-${{ hashFiles('AbubuUnityBasePackage/Packages/manifest.json', 'AbubuUnityBasePackage/Packages/packages-lock.json') }}
-          restore-keys: Library-
+          key: Library-${{ matrix.config }}-${{ hashFiles('AbubuUnityBasePackage/Packages/manifest.json') }}
+          restore-keys: Library-${{ matrix.config }}-
 
       - uses: game-ci/unity-test-runner@v4
         env:
@@ -32,10 +69,10 @@ jobs:
           unityVersion: 6000.3.12f1
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode Test Results
+          checkName: EditMode Test Results (${{ matrix.config }})
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: test-results-${{ matrix.config }}
           path: artifacts

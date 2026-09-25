@@ -28,6 +28,10 @@ namespace Abubu.Audio
         /// <summary>SE を鳴らし、再生終了まで待つ</summary>
         UniTask PlayAsync(string key, CancellationToken ct = default);
         void StopAll();
+        /// <summary>
+        /// 再生中の SE を一時停止/再開する。一時停止中も新しい SE は鳴らせる (ポーズメニューのクリック音など)
+        /// </summary>
+        void SetPaused(bool paused);
     }
 
     public interface IAmbientPlayer
@@ -37,6 +41,8 @@ namespace Abubu.Audio
         UniTask StopAsync(string key, float? fadeDuration = null, CancellationToken ct = default);
         UniTask StopAllAsync(float? fadeDuration = null, CancellationToken ct = default);
         bool IsPlaying(string key);
+        /// <summary>全レイヤーを一時停止/再開する</summary>
+        void SetPaused(bool paused);
     }
 
     /// <summary>サウンド機能の窓口。基本はこれ1つを Inject すれば良い。</summary>

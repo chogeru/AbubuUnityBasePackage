@@ -87,20 +87,19 @@ namespace Abubu.Scene
                 return;
             }
 
-            options ??= new SceneLoadOptions();
+            var resolved = SceneLoadOptions.Resolve(options, _settings);
             _isLoading.Value = true;
             _progress.Value = 0f;
 
             try
             {
                 // キャンセルを受け付けるのはフェードアウト完了まで。ここで止まった場合は元のシーンに留まる
-                await _transition.FadeOutAsync(options.FadeOutDuration ?? _settings.FadeOutDuration,
-                    options.FadeColor ?? _settings.FadeColor, ct);
+                await _transition.FadeOutAsync(resolved.FadeOutDuration, resolved.FadeColor, ct);
                 if (ct.IsCancellationRequested) return;
 
                 // ここから先は ct を渡さない。allowSceneActivation=false のまま放置すると
                 // 以降の LoadSceneAsync がすべて詰まってしまうため、必ず最後まで流す
-                _showLoadingScreen.Value = options.ShowLoadingView;
+                _showLoadingScreen.Value = resolved.ShowLoadingView;
                 var startTime = Time.realtimeSinceStartup;
                 var operation = StartLoad(sceneName);
                 operation.allowSceneActivation = false;
@@ -112,7 +111,7 @@ namespace Abubu.Scene
                 }
                 _progress.Value = 1f;
 
-                var remaining = (options.MinimumLoadingTime ?? _settings.MinimumLoadingTime) - (Time.realtimeSinceStartup - startTime);
+                var remaining = resolved.MinimumLoadingTime - (Time.realtimeSinceStartup - startTime);
                 if (remaining > 0f) await UniTask.Delay(TimeSpan.FromSeconds(remaining), ignoreTimeScale: true);
 
                 // 旧シーンのオブジェクトが親ごと破棄される前に通知する (プール回収など)
@@ -132,7 +131,7 @@ namespace Abubu.Scene
             finally
             {
                 _showLoadingScreen.Value = false;
-                await _transition.FadeInAsync(options.FadeInDuration ?? _settings.FadeInDuration, CancellationToken.None);
+                await _transition.FadeInAsync(resolved.FadeInDuration, CancellationToken.None);
                 _isLoading.Value = false;
             }
 

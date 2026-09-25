@@ -2,6 +2,7 @@ using Abubu.Audio;
 using Abubu.Boot;
 using Abubu.Events;
 using Abubu.Graphics;
+using Abubu.Pause;
 using Abubu.Effects;
 using Abubu.Pool;
 using Abubu.Presentation;
@@ -39,6 +40,11 @@ namespace Abubu
             container.BindInstance(settings.Scene);
             container.BindInstance(settings.Effect);
             container.BindInstance(settings.Save);
+            container.BindInstance(settings.Pause);
+
+            // --- Pause ---
+            container.BindInterfacesTo<PauseService>().AsSingle();
+            container.BindInterfacesTo<AudioPauseBridge>().AsSingle();
 
             // --- Save ---
             container.Bind<ISaveStorage>().FromMethod(() => SaveService.CreateStorage(settings.Save)).AsSingle().IfNotBound();

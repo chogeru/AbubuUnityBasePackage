@@ -2,6 +2,7 @@
     "name": "Abubu.Installer",
     "rootNamespace": "Abubu",
     "references": [
+        "Abubu.Pause",
         "Abubu.Core",
         "Abubu.Save",
         "Abubu.Events",

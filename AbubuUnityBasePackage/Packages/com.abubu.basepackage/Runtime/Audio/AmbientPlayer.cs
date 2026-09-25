@@ -54,6 +54,16 @@ namespace Abubu.Audio
 
         public bool IsPlaying(string key) => _layers.ContainsKey(key);
 
+        public void SetPaused(bool paused)
+        {
+            foreach (var channel in _all)
+            {
+                if (channel.Entry == null) continue;
+                if (paused) channel.Source.Pause();
+                else channel.Source.UnPause();
+            }
+        }
+
         public async UniTask PlayAsync(string key, float? fadeDuration = null, CancellationToken ct = default)
         {
             var duration = fadeDuration ?? _settings.AmbientFadeDuration;

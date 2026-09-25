@@ -26,6 +26,7 @@ namespace Abubu.Audio
         private readonly SoundSettings _settings;
         private readonly ObjectPool<Voice> _pool;
         private readonly List<Voice> _active = new();
+        private readonly HashSet<Voice> _paused = new();
         private readonly Dictionary<string, float> _lastPlayedTime = new();
         private readonly IDisposable _volumeSubscription;
         private float _categoryVolume = 1f;
@@ -92,6 +93,24 @@ namespace Abubu.Audio
         {
             foreach (var voice in _active) _pool.Return(voice);
             _active.Clear();
+            _paused.Clear();
+        }
+
+        public void SetPaused(bool paused)
+        {
+            if (paused)
+            {
+                foreach (var voice in _active)
+                {
+                    if (!voice.Source.isPlaying || !_paused.Add(voice)) continue;
+                    voice.Source.Pause();
+                }
+            }
+            else
+            {
+                foreach (var voice in _paused) voice.Source.UnPause();
+                _paused.Clear();
+            }
         }
 
         void ITickable.Tick()
@@ -101,7 +120,8 @@ namespace Abubu.Audio
             for (var i = _active.Count - 1; i >= 0; i--)
             {
                 var voice = _active[i];
-                if (voice.Source.isPlaying) continue;
+                // 一時停止中の SE は isPlaying が false になるが、終わったわけではないので返却しない
+                if (voice.Source.isPlaying || _paused.Contains(voice)) continue;
                 _active.RemoveAt(i);
                 _pool.Return(voice);
             }
@@ -123,6 +143,7 @@ namespace Abubu.Audio
             // 同時発音数を超えたら最も古い SE を止める (ボイススティール)
             if (_active.Count >= _settings.MaxSeVoices)
             {
+                _paused.Remove(_active[0]);
                 _pool.Return(_active[0]);
                 _active.RemoveAt(0);
             }

@@ -31,5 +31,32 @@ namespace Abubu.Scene
         public bool ShowLoadingView = true;
 
         public static SceneLoadOptions Instant => new() { FadeOutDuration = 0f, FadeInDuration = 0f, ShowLoadingView = false };
+
+        /// <summary>未指定の項目を SceneSettings の値で埋めた、確定済みの値を返す (options が null でも可)</summary>
+        public static ResolvedSceneLoadOptions Resolve(SceneLoadOptions options, SceneSettings settings) => new(
+            options?.FadeOutDuration ?? settings.FadeOutDuration,
+            options?.FadeInDuration ?? settings.FadeInDuration,
+            options?.FadeColor ?? settings.FadeColor,
+            options?.MinimumLoadingTime ?? settings.MinimumLoadingTime,
+            options?.ShowLoadingView ?? true);
+    }
+
+    /// <summary>SceneLoadOptions と SceneSettings をマージした結果</summary>
+    public readonly struct ResolvedSceneLoadOptions
+    {
+        public readonly float FadeOutDuration;
+        public readonly float FadeInDuration;
+        public readonly Color FadeColor;
+        public readonly float MinimumLoadingTime;
+        public readonly bool ShowLoadingView;
+
+        public ResolvedSceneLoadOptions(float fadeOut, float fadeIn, Color fadeColor, float minimumLoadingTime, bool showLoadingView)
+        {
+            FadeOutDuration = fadeOut;
+            FadeInDuration = fadeIn;
+            FadeColor = fadeColor;
+            MinimumLoadingTime = minimumLoadingTime;
+            ShowLoadingView = showLoadingView;
+        }
     }
 }

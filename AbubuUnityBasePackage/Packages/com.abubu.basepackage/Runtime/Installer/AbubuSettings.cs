@@ -1,6 +1,7 @@
 using Abubu.Audio;
 using Abubu.Boot;
 using Abubu.Effects;
+using Abubu.Pause;
 using Abubu.Save;
 using Abubu.Scene;
 using UnityEngine;
@@ -18,5 +19,6 @@ namespace Abubu
         public SceneSettings Scene = new();
         public EffectSettings Effect = new();
         public SaveSettings Save = new();
+        public PauseSettings Pause = new();
     }
 }

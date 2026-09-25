@@ -21,6 +21,14 @@ namespace Abubu.Audio
         [Tooltip("SE の最大同時発音数。超えた場合は最も古い SE を止めて鳴らす")]
         [Min(1)] public int MaxSeVoices = 32;
 
+        [Header("Pause (IPauseService と連動)")]
+        [Tooltip("ポーズ中に BGM を一時停止する (オフならポーズ中も流れ続ける)")]
+        public bool PauseBgm;
+        [Tooltip("ポーズ中に再生中の SE を一時停止する (ポーズ中に新しく鳴らす SE は鳴る)")]
+        public bool PauseSe = true;
+        [Tooltip("ポーズ中に環境音を一時停止する")]
+        public bool PauseAmbient = true;
+
         [Header("Mixer (任意)")]
         [Tooltip("設定すると音量をミキサーの Exposed Parameter で制御する。未設定なら AudioSource.volume で制御")]
         public AudioMixer Mixer;

@@ -4,8 +4,10 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
+        "Abubu.Pause",
         "Abubu.Save",
         "Abubu.Audio",
+        "Abubu.Scene",
         "Abubu.Events",
         "R3.Unity"
     ],
@@ -29,11 +31,31 @@
         "ABUBU_DEPS_LITMOTION"
     ],
     "versionDefines": [
-        { "name": "com.cysharp.unitask", "expression": "", "define": "ABUBU_DEPS_UNITASK" },
-        { "name": "com.cysharp.r3", "expression": "", "define": "ABUBU_DEPS_R3" },
-        { "name": "com.svermeulen.extenject", "expression": "", "define": "ABUBU_DEPS_ZENJECT" },
-        { "name": "com.annulusgames.u-pools", "expression": "", "define": "ABUBU_DEPS_UPOOLS" },
-        { "name": "com.annulusgames.lit-motion", "expression": "", "define": "ABUBU_DEPS_LITMOTION" }
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        },
+        {
+            "name": "com.annulusgames.u-pools",
+            "expression": "",
+            "define": "ABUBU_DEPS_UPOOLS"
+        },
+        {
+            "name": "com.annulusgames.lit-motion",
+            "expression": "",
+            "define": "ABUBU_DEPS_LITMOTION"
+        }
     ],
     "noEngineReferences": false
 }
