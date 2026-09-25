@@ -1,5 +1,129 @@
 {
   "dependencies": {
+    "com.abubu.basepackage": {
+      "version": "file:com.abubu.basepackage",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.ugui": "2.0.0"
+      }
+    },
+    "com.annulusgames.lit-motion": {
+      "version": "https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion#v2.0.2",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.burst": "1.6.0",
+        "com.unity.collections": "1.5.1",
+        "com.unity.mathematics": "1.0.1"
+      },
+      "hash": "0b4c588ee75a07198841d92aab653e6b39445089"
+    },
+    "com.annulusgames.lucid-random": {
+      "version": "https://github.com/AnnulusGames/LucidRandom.git?path=/Assets/LucidRandom#v1.1.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "ef54fcebdbd9261a9af2e8651844ee5958c03129"
+    },
+    "com.annulusgames.scene-system": {
+      "version": "https://github.com/AnnulusGames/SceneSystem.git?path=/Assets/SceneSystem#v1.0.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "0e25c4be1e84ef87c987e59239e7c79800847a5a"
+    },
+    "com.annulusgames.tween-playables": {
+      "version": "https://github.com/AnnulusGames/TweenPlayables.git?path=/Assets/TweenPlayables#v0.9.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.textmeshpro": "2.0.1",
+        "com.unity.timeline": "1.2.14"
+      },
+      "hash": "7dca23c000b2e439b17cc946c0d0767983342fa6"
+    },
+    "com.annulusgames.u-pools": {
+      "version": "https://github.com/AnnulusGames/uPools.git?path=/Assets/uPools#v1.0.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "1f57d5e49abb6ba7990dc61f43c66ad7d5223438"
+    },
+    "com.cysharp.messagepipe": {
+      "version": "https://github.com/Cysharp/MessagePipe.git?path=src/MessagePipe.Unity/Assets/Plugins/MessagePipe#1.8.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "e901746b927bcd84ad94d642512a7a7a7600d15b"
+    },
+    "com.cysharp.messagepipe.zenject": {
+      "version": "https://github.com/Cysharp/MessagePipe.git?path=src/MessagePipe.Unity/Assets/Plugins/MessagePipe.Zenject#1.8.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "e901746b927bcd84ad94d642512a7a7a7600d15b"
+    },
+    "com.cysharp.r3": {
+      "version": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity#1.3.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.modules.imgui": "1.0.0"
+      },
+      "hash": "f6eed2dd4208dc4ae171c601e799e85f82aca25e"
+    },
+    "com.cysharp.unitask": {
+      "version": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#2.5.11",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "2e993ff18f28c931602a07292df0b0804eebef99"
+    },
+    "com.github-glitchenzo.nugetforunity": {
+      "version": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity#v4.5.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "a7c6b49a0141a5bff9b1983e38137522ef61977d"
+    },
+    "com.svermeulen.extenject": {
+      "version": "https://github.com/modesttree/Zenject.git?path=UnityProject/Assets/Plugins/Zenject#31f06cf81043f04301b1072ec81922b64149ea34",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "31f06cf81043f04301b1072ec81922b64149ea34"
+    },
+    "com.tanitaka-tech.state-variable": {
+      "version": "https://github.com/tanitaka-tech/StateVariable.git#v1.4.3",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "01bc7fc16e5e85c0793b69aa31bd8efdf52338e7"
+    },
+    "com.tanitaka-tech.unity-process-manager": {
+      "version": "https://github.com/tanitaka-tech/UnityProcessManager.git#v1.1.2",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "6dbde72056eb88c3cfc404e3f2d989db9a422bc0"
+    },
+    "com.unity.addressables": {
+      "version": "2.10.3",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.profiling.core": "1.0.2",
+        "com.unity.test-framework": "1.4.5",
+        "com.unity.modules.assetbundle": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0",
+        "com.unity.modules.imageconversion": "1.0.0",
+        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.scriptablebuildpipeline": "2.6.2",
+        "com.unity.modules.unitywebrequestassetbundle": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.11",
       "depth": 0,
@@ -11,7 +135,7 @@
     },
     "com.unity.burst": {
       "version": "1.8.28",
-      "depth": 2,
+      "depth": 1,
       "source": "registry",
       "dependencies": {
         "com.unity.mathematics": "1.2.1",
@@ -28,7 +152,7 @@
     },
     "com.unity.collections": {
       "version": "2.6.5",
-      "depth": 2,
+      "depth": 1,
       "source": "registry",
       "dependencies": {
         "com.unity.burst": "1.8.27",
@@ -74,7 +198,7 @@
     },
     "com.unity.mathematics": {
       "version": "1.3.3",
-      "depth": 2,
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
@@ -89,7 +213,14 @@
     },
     "com.unity.nuget.mono-cecil": {
       "version": "1.11.6",
-      "depth": 3,
+      "depth": 2,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.profiling.core": {
+      "version": "1.0.3",
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
@@ -126,6 +257,16 @@
         "com.unity.render-pipelines.core": "17.0.3"
       }
     },
+    "com.unity.scriptablebuildpipeline": {
+      "version": "2.6.2",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.test-framework": "1.4.5",
+        "com.unity.modules.assetbundle": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.searcher": {
       "version": "4.9.4",
       "depth": 2,
@@ -154,13 +295,21 @@
     },
     "com.unity.test-framework.performance": {
       "version": "3.2.0",
-      "depth": 3,
+      "depth": 2,
       "source": "registry",
       "dependencies": {
         "com.unity.test-framework": "1.1.33",
         "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.com"
+    },
+    "com.unity.textmeshpro": {
+      "version": "5.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.ugui": "2.0.0"
+      }
     },
     "com.unity.timeline": {
       "version": "1.8.11",
@@ -192,6 +341,20 @@
         "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.com"
+    },
+    "jp.co.cyberagent.smartaddresser": {
+      "version": "https://github.com/CyberAgentGameEntertainment/SmartAddresser.git?path=/Assets/SmartAddresser#1.2.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "fe0e41d8c40bb1baa49fe7b66cdee4d85bc80cb7"
+    },
+    "net.tnrd.serializableinterface": {
+      "version": "https://github.com/Thundernerd/Unity3D-SerializableInterface.git#v2.3.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "5aad6789a99485700359919f042e3b954acfa62a"
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
