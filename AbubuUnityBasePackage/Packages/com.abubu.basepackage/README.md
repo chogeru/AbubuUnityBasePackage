@@ -71,7 +71,7 @@ Scenes.LoadWith("Result", new ResultData(score)); // データを渡す
 Scenes.Reload();
 
 // エフェクト / プール
-Effects.Play("explosion", enemy.position);     // SE も一緒に鳴り、終わったら自動でプールに戻る
+Fx.Play("explosion", enemy.position);     // SE も一緒に鳴り、終わったら自動でプールに戻る
 var bullet = Pools.Rent(bulletPrefab, muzzle.position, muzzle.rotation);
 Pools.ReturnAfter(bullet, 3f);
 

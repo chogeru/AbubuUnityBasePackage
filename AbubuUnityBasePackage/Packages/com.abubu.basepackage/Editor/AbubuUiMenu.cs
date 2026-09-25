@@ -20,7 +20,7 @@ namespace Abubu.Editor
             Selection.activeGameObject = panel;
         }
 
-        internal static GameObject BuildVolumeSettingsPanel(Canvas canvas)
+        public static GameObject BuildVolumeSettingsPanel(Canvas canvas)
         {
             var resources = GetResources();
 
@@ -63,7 +63,7 @@ namespace Abubu.Editor
             Selection.activeGameObject = panel;
         }
 
-        internal static GameObject BuildGraphicsSettingsPanel(Canvas canvas)
+        public static GameObject BuildGraphicsSettingsPanel(Canvas canvas)
         {
             var resources = GetResources();
 
@@ -153,7 +153,7 @@ namespace Abubu.Editor
             return sliderGo.GetComponent<Slider>();
         }
 
-        internal static Canvas FindOrCreateCanvas()
+        public static Canvas FindOrCreateCanvas()
         {
             if (Selection.activeGameObject != null)
             {
@@ -185,7 +185,7 @@ namespace Abubu.Editor
             return canvas;
         }
 
-        internal static DefaultControls.Resources GetResources() => new()
+        public static DefaultControls.Resources GetResources() => new()
         {
             standard = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"),
             background = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd"),

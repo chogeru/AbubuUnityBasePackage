@@ -58,10 +58,10 @@ namespace Abubu
     /// <summary>
     /// エフェクトの static ショートカット。
     /// <code>
-    /// Effects.Play("explosion", transform.position);
+    /// Fx.Play("explosion", transform.position);
     /// </code>
     /// </summary>
-    public static class Effects
+    public static class Fx
     {
         public static IEffectService Service => AbubuServices.TryResolve<IEffectService>();
 

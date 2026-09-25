@@ -85,7 +85,8 @@ namespace Abubu
         {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                if (assembly.IsDynamic) continue;
+                // 数百あるアセンブリ全部の属性を読むと起動が遅くなるため、Abubu.* だけを対象にする
+                if (assembly.IsDynamic || !assembly.GetName().Name.StartsWith("Abubu.", StringComparison.Ordinal)) continue;
                 foreach (AbubuModuleInstallerAttribute attribute in assembly.GetCustomAttributes(typeof(AbubuModuleInstallerAttribute), false))
                 {
                     if (Activator.CreateInstance(attribute.InstallerType) is IAbubuModuleInstaller installer)
