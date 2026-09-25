@@ -54,3 +54,9 @@ crashlytics-build.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Unity が git パッケージ内の FBX から書き出すテクスチャ (Zenject サンプル)
+/AbubuUnityBasePackage/Packages/com.svermeulen.extenject/
+
+# git 経由の読み取り専用パッケージ(Zenject)の FBX 取り込み時に Unity が自動生成する残骸
+AbubuUnityBasePackage/Packages/com.svermeulen.extenject/
