@@ -1,0 +1,24 @@
+{
+    "name": "Abubu.Events",
+    "rootNamespace": "Abubu",
+    "references": [
+        "R3.Unity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_DEPS_R3"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        }
+    ],
+    "noEngineReferences": false
+}

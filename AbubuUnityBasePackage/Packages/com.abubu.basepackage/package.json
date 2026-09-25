@@ -1,0 +1,13 @@
+{
+  "name": "com.abubu.basepackage",
+  "displayName": "Abubu Base Package",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "ゲームジャム/新規プロジェクト向けの基盤パッケージ。シーン遷移、BGM/SE/環境音管理、音量設定UI(MVP)を Zenject + UniTask + R3 + uPools + LitMotion で提供します。",
+  "keywords": ["sound", "audio", "scene", "zenject", "unitask", "gamejam"],
+  "author": { "name": "Abubu", "url": "https://github.com/chogeru/AbubuUnityBasePackage" },
+  "license": "MIT",
+  "dependencies": {
+    "com.unity.ugui": "2.0.0"
+  }
+}

@@ -1,0 +1,33 @@
+{
+    "name": "Abubu.MessagePipe",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Core",
+        "Zenject",
+        "MessagePipe",
+        "MessagePipe.Zenject"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_MESSAGEPIPE",
+        "ABUBU_DEPS_ZENJECT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.messagepipe.zenject",
+            "expression": "",
+            "define": "ABUBU_MESSAGEPIPE"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
+    ],
+    "noEngineReferences": false
+}

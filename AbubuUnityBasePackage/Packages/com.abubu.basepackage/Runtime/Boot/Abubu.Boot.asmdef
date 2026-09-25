@@ -1,0 +1,45 @@
+{
+    "name": "Abubu.Boot",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Scene",
+        "UniTask",
+        "R3.Unity",
+        "Zenject"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_DEPS_LITMOTION",
+        "ABUBU_DEPS_R3",
+        "ABUBU_DEPS_UNITASK",
+        "ABUBU_DEPS_ZENJECT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.annulusgames.lit-motion",
+            "expression": "",
+            "define": "ABUBU_DEPS_LITMOTION"
+        },
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
+    ],
+    "noEngineReferences": false
+}

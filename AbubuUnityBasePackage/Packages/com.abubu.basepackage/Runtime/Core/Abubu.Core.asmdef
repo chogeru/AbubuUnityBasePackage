@@ -1,0 +1,24 @@
+{
+    "name": "Abubu.Core",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Zenject"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_DEPS_ZENJECT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
+    ],
+    "noEngineReferences": false
+}

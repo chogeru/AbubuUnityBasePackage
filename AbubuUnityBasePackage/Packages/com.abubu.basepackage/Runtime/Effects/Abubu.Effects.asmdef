@@ -1,0 +1,37 @@
+{
+    "name": "Abubu.Effects",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Pool",
+        "Zenject"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_DEPS_UNITASK",
+        "ABUBU_DEPS_ZENJECT",
+        "ABUBU_DEPS_UPOOLS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        },
+        {
+            "name": "com.annulusgames.u-pools",
+            "expression": "",
+            "define": "ABUBU_DEPS_UPOOLS"
+        }
+    ],
+    "noEngineReferences": false
+}

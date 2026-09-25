@@ -1,0 +1,32 @@
+{
+    "name": "Abubu.Graphics",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Save",
+        "R3.Unity",
+        "Zenject"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_DEPS_R3",
+        "ABUBU_DEPS_ZENJECT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
+    ],
+    "noEngineReferences": false
+}
