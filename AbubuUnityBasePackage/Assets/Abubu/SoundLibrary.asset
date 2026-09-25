@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c428609180538a4783e4029ab7ecf69, type: 3}
+  m_Name: SoundLibrary
+  m_EditorClassIdentifier: Abubu.Audio::Abubu.Audio.SoundLibrary
+  bgm:
+  - Key: bgm_a
+    Clips:
+    - {fileID: 8300000, guid: 28f6c9592a883fe43843713552014cb1, type: 3}
+    Volume: 0.8
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0
+    SpatialBlend: 0
+  - Key: bgm_b
+    Clips:
+    - {fileID: 8300000, guid: 3ab515bc1d510f24a87b188744e8eb7c, type: 3}
+    Volume: 0.8
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0
+    SpatialBlend: 0
+  se:
+  - Key: jump
+    Clips:
+    - {fileID: 8300000, guid: 9378325eaeebbb642ba93941b0065e25, type: 3}
+    Volume: 1
+    PitchRange: {x: 0.9, y: 1.1}
+    Cooldown: 0
+    SpatialBlend: 0
+  - Key: coin
+    Clips:
+    - {fileID: 8300000, guid: da06938a95a7fb34ea16c54db917ad8b, type: 3}
+    Volume: 0.8
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0.05
+    SpatialBlend: 0
+  - Key: explosion
+    Clips:
+    - {fileID: 8300000, guid: b782c262ad639774bb7a86f67be39033, type: 3}
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0
+    SpatialBlend: 0
+  ambient:
+  - Key: wind
+    Clips:
+    - {fileID: 8300000, guid: d624c6d0963f4c94f9a7682507d335a5, type: 3}
+    Volume: 0.6
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0
+    SpatialBlend: 0
+  - Key: rain
+    Clips:
+    - {fileID: 8300000, guid: 3fe03bec18ef66b44a51a0c8f869e50c, type: 3}
+    Volume: 0.5
+    PitchRange: {x: 1, y: 1}
+    Cooldown: 0
+    SpatialBlend: 0
+  includes: []

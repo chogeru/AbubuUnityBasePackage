@@ -244,3 +244,25 @@ Container.Bind<ISceneTransition>().To<MyTransition>().AsSingle();
 ```
 - ロード画面: `SceneLoadingView` を付けたプレハブを `AbubuSettings > Scene > Loading View Prefab` に設定 (表示は `SceneLoadingScreen` が `ISceneService.ShowLoadingScreen` を購読して行います)
 - 自前の ProjectContext Installer から使う: `AbubuInstaller.Install(Container, settings);`
+
+## サンプル
+
+Package Manager → Abubu Base Package → Samples → **Basic Demo** の Import を押し、`Tools > Abubu > Create Sample Scenes` を実行すると、全機能を試せるシーンが生成されます。
+
+## 開発者向け
+
+### サンプルの正本
+
+- 正本は `Samples~/BasicDemo` です。`Assets/Samples/` は Import で作られるコピーで、git の管理対象外です。
+- サンプルを直すときは `Samples~` 側を編集し、Package Manager から再 Import して確認します。
+- 将来 `Samples~` にシーンやプレハブを直接置く場合は、GUID を固定するため `.meta` も一緒にコミットしてください（Unity はチルダ付きフォルダの .meta を自動生成しません）。
+
+### テスト
+
+- EditMode テストは `Tests/Editor`（`Abubu.Tests.Editor`）にあります。`Window > General > Test Runner > EditMode` で実行します。
+- git URL で導入したプロジェクトでテストを走らせる場合は、そのプロジェクトの `Packages/manifest.json` に `"testables": ["com.abubu.basepackage"]` を追加してください。
+
+### CI
+
+- `.github/workflows/unity-test.yml` が game-ci/unity-test-runner でコンパイルと EditMode テストを実行します。
+- リポジトリの Settings > Secrets に `UNITY_LICENSE`、`UNITY_EMAIL`、`UNITY_PASSWORD` の登録が必要です（取得方法: https://game.ci/docs/github/activation ）。

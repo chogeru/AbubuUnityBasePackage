@@ -1,0 +1,41 @@
+# Unity のコンパイルと EditMode テストを実行する
+# 必要な secrets: UNITY_LICENSE (Personal は .ulf の中身), UNITY_EMAIL, UNITY_PASSWORD
+# 取得方法: https://game.ci/docs/github/activation
+name: Unity Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/cache@v4
+        with:
+          path: AbubuUnityBasePackage/Library
+          key: Library-${{ hashFiles('AbubuUnityBasePackage/Packages/manifest.json', 'AbubuUnityBasePackage/Packages/packages-lock.json') }}
+          restore-keys: Library-
+
+      - uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: AbubuUnityBasePackage
+          unityVersion: 6000.3.12f1
+          testMode: editmode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: EditMode Test Results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: artifacts

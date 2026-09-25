@@ -1,27 +1,27 @@
 {
-    "name": "Abubu.Samples",
-    "rootNamespace": "Abubu",
+    "name": "Abubu.Tests.Editor",
+    "rootNamespace": "Abubu.Tests",
     "references": [
-        "Abubu.Shortcuts",
-        "Abubu.Core",
-        "Abubu.Audio",
-        "Abubu.Scene",
-        "Abubu.Pool",
-        "Abubu.Effects",
-        "Abubu.Events",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
         "Abubu.Save",
-        "R3.Unity",
-        "UniTask",
-        "Zenject",
-        "UnityEngine.UI"
+        "Abubu.Audio",
+        "Abubu.Events",
+        "R3.Unity"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "R3.dll"
+    ],
     "autoReferenced": false,
     "defineConstraints": [
+        "UNITY_INCLUDE_TESTS",
         "ABUBU_DEPS_UNITASK",
         "ABUBU_DEPS_R3",
         "ABUBU_DEPS_ZENJECT",

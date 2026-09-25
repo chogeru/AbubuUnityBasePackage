@@ -8,6 +8,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Abubu/Samples/AbubuSampleTitle.unity
+    guid: da5637253238b4d4e936df97f43868de
+  - enabled: 1
+    path: Assets/Abubu/Samples/AbubuSampleGame.unity
+    guid: 8500612ae570ce34ebf39557f121878f
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

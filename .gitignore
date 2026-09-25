@@ -57,3 +57,10 @@ Thumbs.db
 
 # Unity が git パッケージ内の FBX から書き出すテクスチャ (Zenject サンプル)
 /AbubuUnityBasePackage/Packages/com.svermeulen.extenject/
+
+# サンプルの正本は Packages/com.abubu.basepackage/Samples~。Assets 側は Package Manager の Import で作り直す
+/AbubuUnityBasePackage/Assets/Samples/
+/AbubuUnityBasePackage/Assets/Samples.meta
+# Create Sample Scenes で生成されるアセット
+/AbubuUnityBasePackage/Assets/Abubu/Samples/
+/AbubuUnityBasePackage/Assets/Abubu/Samples.meta
