@@ -13,6 +13,11 @@
 | Addressables | 参照カウント付きロード、シーン単位の自動解放、先読み |
 | 画面設定 | 解像度 / 表示モード / 画質 / VSync / FPS の Model + 設定 UI |
 | MVP | Presenter 基底クラス、シーンに置くだけで動く View |
+| 入力 | Input System のラッパー (Move / Jump など)、キーリバインドの保存、ポーズ連動 |
+| ポーズ | 複数の呼び出し元を数えるポーズ管理 (`Time.timeScale` と音・入力へ反映) |
+| ポップアップ | ダイアログのスタック管理、背面ブロック、ポーズ連動 |
+| デバッグ | FPS / メモリ / 任意の項目を重ねて表示する `DebugOverlay` |
+| 開発支援 | `Validate Setup` による診断、`Generate Keys` によるキー定数の自動生成 |
 
 技術スタック: Zenject (DI) + UniTask + R3 + uPools + LitMotion (+ MessagePipe / Addressables は任意)
 
@@ -26,6 +31,12 @@ Package Manager → `+` → **Add package from git URL...**
 https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/Packages/com.abubu.basepackage
 ```
 
+バージョンを固定したいときは、URL の末尾にタグを付けます（変更履歴は `CHANGELOG.md`）。
+
+```
+https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/Packages/com.abubu.basepackage#v0.2.0
+```
+
 ### 2. 依存パッケージを入れる
 
 追加直後に「依存パッケージが不足しています」ダイアログが出るので **インストール** を押す。
@@ -36,6 +47,7 @@ https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/
 | 必須 | UniTask, R3 (+NuGetForUnity), Zenject, uPools, LitMotion |
 | 任意 (`All`) | MessagePipe, StateVariable, UnityProcessManager, SerializableInterface, Addressables, SmartAddresser, LucidRandom, TweenPlayables, SceneSystem |
 
+- 推奨バージョンの正本は `Setup/Editor/AbubuDependencyInstaller.cs` の表です。導入済みの版と食い違っていないかは `Tools > Abubu > Install Dependencies > Check Versions` で確認できます。
 - 必須パッケージが揃うまで Abubu.Runtime はコンパイル対象外になるため、導入途中でもエラーで止まりません。
 - MessagePipe / Addressables は入っていれば自動で有効になります。
 - R3 本体は NuGet 配布のため `Assets/packages.config` に自動で追記され、NuGetForUnity が復元します。
@@ -82,7 +94,35 @@ GameEvents.Receive<EnemyDied>().Subscribe(e => score += e.Score).AddTo(this);
 // セーブ
 Saves.Save("highscore", 1200);
 var best = Saves.Load("highscore", 0);
+
+// 入力 (Input System 導入時)
+var move = GameInput.Move;
+GameInput.Jump.Subscribe(_ => Jump()).AddTo(this);
+
+// ポップアップ
+Popups.Push(confirmDialogPrefab);
+Popups.Pop();
 ```
+
+### キーの定数化
+
+`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリを編集したら再実行してください)。
+
+```csharp
+Sound.PlaySe(SoundKeys.Se.Jump);
+Sound.PlayBgm(SoundKeys.Bgm.Stage1);
+Fx.Play(EffectKeys.Explosion, enemy.position);
+```
+
+存在しないキーを指定したときの警告には「もしかして: "jump"」のように近いキーが表示されます。
+
+### static ショートカットの注意
+
+`Sound` / `Scenes` / `Fx` / `GameEvents` / `GameInput` / `Popups` は `ProjectContext` を介したグローバルなアクセスです。
+
+- `ProjectContext` が無い・アプリ終了中は、何もせずに戻ります (未セットアップのときだけ警告を 1 回出します)。
+- Enter Play Mode Options (Domain Reload 無効) でも、再生のたびに内部状態をリセットするので前回の状態は残りません。
+- 単体テストや再利用するコードでは、`[Inject]` で `ISoundService` などを受け取る形にしてください (テストで差し替えられます)。
 
 ## ノーコード
 
@@ -90,6 +130,7 @@ var best = Saves.Load("highscore", 0);
 |---|---|
 | `GameObject > Abubu > Volume Settings Panel` | 音量設定 UI を生成 (Master / BGM / SE / 環境音 / ミュート) |
 | `GameObject > Abubu > Graphics Settings Panel` | 画面設定 UI を生成 (解像度 / 表示モード / 画質 / FPS / VSync) |
+| `GameObject > Abubu > Debug Overlay` | FPS / メモリ表示をシーンに追加 |
 | `Play BGM On Start` | シーン開始時に BGM 再生 |
 | `Play Ambient On Start` | シーン開始時に環境音レイヤー再生 |
 | `Play SE On Click` | Button 押下で SE |
@@ -107,6 +148,9 @@ var best = Saves.Load("highscore", 0);
 | `IAssetService` | Addressables (導入時のみ) |
 | `GraphicsSettingsModel` / `AudioVolumeModel` | 設定値 (ReactiveProperty) |
 | `IBootService` | 起動処理の完了待ち |
+| `IPauseService` | ポーズ (owner 単位で数える) |
+| `IInputService` | 入力 (Input System 導入時) |
+| `IPopupService` | ポップアップのスタック管理 |
 
 ```csharp
 public sealed class Player : MonoBehaviour
@@ -223,6 +267,47 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 [Inject] IPublisher<EnemyDied> _publisher;  // 使う側
 ```
 
+### 入力 (Input System 導入時)
+
+- `IInputService` は Input System の型を外に出さず、`Move` / `Look` (ReactiveProperty) と `Jump` / `Attack` / `Interact` / `Submit` / `Cancel` (Observable) を公開します。
+- 既定ではプロジェクト共通の Input Actions (Unity 6 テンプレートの `InputSystem_Actions`) を使います。別のアセットを使うときは `Resources/AbubuInputSettings` (Create > Abubu > Input Settings) を作り、Action のパスを書き換えます。
+- ポーズ中はゲーム操作用の ActionMap (既定 `Player`) が無効になり、UI の操作だけ受け付けます。会話中などは `SetGameplayEnabled(false)` で止められます。
+- `RebindAsync("Player/Jump")` でキー割り当てを対話的に変更し、結果は `ISaveService` に保存されて次回起動時に復元されます (`ResetBindings()` で初期状態に戻る)。
+- `CurrentDevice` で最後に操作したデバイス (キーボード / ゲームパッド / タッチ) が分かるので、ボタン表示の切り替えに使えます。
+
+### ポーズ
+
+- `IPauseService.Pause(owner)` / `Resume(owner)` は呼び出し元 (owner) を数え、全員が解除したときだけ再開します。ポーズメニューの上に確認ダイアログを重ねても、片方を閉じただけでは再開しません。
+- `Time.timeScale` を書き換えるのはこのサービスだけです (`AbubuSettings > Pause > Stop Time Scale` で無効化可)。
+- 音と入力は `IsPaused` を購読して自動で反映されます。
+
+### ポップアップ
+
+```csharp
+var dialog = _popups.Push(confirmDialogPrefab);   // 専用 Canvas の下に生成され、背面は操作できなくなる
+_popups.Pop();                                    // 一番手前を閉じる
+_popups.PopAll();
+```
+
+- プレハブのコンポーネントに `IPopup` を実装すると、`OnOpened` / `OnClosing` の通知を受け取れます。
+- `Resources/AbubuUiSettings` (Create > Abubu > UI Settings) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・Sorting Order を設定できます。
+- Cancel キーで閉じたい場合は `GameInput.Cancel.Subscribe(_ => Popups.Pop())` のように結線します。
+
+### デバッグ表示
+
+- `DebugOverlay` をシーンに置く (`GameObject > Abubu > Debug Overlay`) か、`DebugOverlay.EnsureExists()` を呼ぶと、FPS・メモリ・timeScale・解像度が表示されます。
+- 画面左上の `Dbg` ボタン (旧 Input Manager が有効ならキー F1 も) で詳細の表示/非表示を切り替えます。
+- `DebugOverlay.Register("score", () => score.ToString())` で任意の項目を追加できます。リリースビルドでは既定で何も表示しません。
+
+### セットアップの診断
+
+`Tools > Abubu > Validate Setup` は次を調べて Console に出力します (何も変更しません)。
+
+- `Resources/ProjectContext.prefab` と `AbubuInstaller` の有無
+- `AbubuSettings` のライブラリ未設定
+- Boot シーン / 最初のシーンが Build Profiles に入っているか
+- SoundLibrary / EffectLibrary の空キー・重複キー・Clip / Prefab 未設定・存在しない SE キー
+
 ### Addressables (導入時のみ)
 
 ```csharp
@@ -245,6 +330,17 @@ Container.Bind<ISceneTransition>().To<MyTransition>().AsSingle();
 - ロード画面: `SceneLoadingView` を付けたプレハブを `AbubuSettings > Scene > Loading View Prefab` に設定 (表示は `SceneLoadingScreen` が `ISceneService.ShowLoadingScreen` を購読して行います)
 - 自前の ProjectContext Installer から使う: `AbubuInstaller.Install(Container, settings);`
 
+## 対応プラットフォーム
+
+| プラットフォーム | 状況 |
+|---|---|
+| Windows / macOS / Linux (Standalone) | 開発・動作確認の対象 |
+| WebGL | 設計上の対応あり (セーブは自動で PlayerPrefs)。実機確認は未実施 |
+| Android / iOS | 設計上の対応あり (画面設定の一部は PC 向け)。実機確認は未実施 |
+| コンソール | 未確認 |
+
+「未実施」の環境で動かしたときは Issue で教えてください。確認できたらこの表を更新します。
+
 ## サンプル
 
 Package Manager → Abubu Base Package → Samples → **Basic Demo** の Import を押し、`Tools > Abubu > Create Sample Scenes` を実行すると、全機能を試せるシーンが生成されます。
@@ -259,10 +355,15 @@ Package Manager → Abubu Base Package → Samples → **Basic Demo** の Import
 
 ### テスト
 
-- EditMode テストは `Tests/Editor`（`Abubu.Tests.Editor`）にあります。`Window > General > Test Runner > EditMode` で実行します。
+- EditMode テストは `Tests/Editor`（`Abubu.Tests.Editor`）と `Tests/Input`（`Abubu.Tests.Input`、Input System 導入時のみ）にあります。`Window > General > Test Runner > EditMode` で実行します。
+- PlayMode テスト（プール / エフェクト / ポップアップ。`Destroy` や時間経過を伴うため）は `Tests/Runtime`（`Abubu.Tests.Runtime`）にあります。`Window > General > Test Runner > PlayMode` で実行します。
 - git URL で導入したプロジェクトでテストを走らせる場合は、そのプロジェクトの `Packages/manifest.json` に `"testables": ["com.abubu.basepackage"]` を追加してください。
 
 ### CI
 
-- `.github/workflows/unity-test.yml` が game-ci/unity-test-runner でコンパイルと EditMode テストを実行します。
+- `.github/workflows/unity-test.yml` が game-ci/unity-test-runner でコンパイルと EditMode / PlayMode テストを実行します（full / minimal の 2 構成）。
 - リポジトリの Settings > Secrets に `UNITY_LICENSE`、`UNITY_EMAIL`、`UNITY_PASSWORD` の登録が必要です（取得方法: https://game.ci/docs/github/activation ）。
+
+## ライセンス
+
+MIT（`LICENSE.md`）。依存ライブラリのライセンスは `THIRD-PARTY-NOTICES.md` を参照してください。

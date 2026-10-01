@@ -2,6 +2,7 @@
     "name": "Abubu.Audio",
     "rootNamespace": "Abubu",
     "references": [
+        "Abubu.Common",
         "Abubu.Save",
         "UniTask",
         "R3.Unity",

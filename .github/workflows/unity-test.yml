@@ -1,4 +1,4 @@
-# Unity のコンパイルと EditMode テストを実行する
+# Unity のコンパイルと EditMode / PlayMode テストを実行する
 # 必要な secrets: UNITY_LICENSE (Personal は .ulf の中身), UNITY_EMAIL, UNITY_PASSWORD
 # 取得方法: https://game.ci/docs/github/activation
 # secrets が未登録 (fork からの PR を含む) の場合は、失敗させずにスキップする
@@ -67,9 +67,9 @@ jobs:
         with:
           projectPath: AbubuUnityBasePackage
           unityVersion: 6000.3.12f1
-          testMode: editmode
+          testMode: all
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode Test Results (${{ matrix.config }})
+          checkName: Test Results (${{ matrix.config }})
 
       - uses: actions/upload-artifact@v4
         if: always()

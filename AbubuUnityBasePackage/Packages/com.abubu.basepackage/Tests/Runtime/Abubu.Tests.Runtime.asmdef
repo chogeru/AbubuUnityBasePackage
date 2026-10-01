@@ -1,44 +1,37 @@
 {
-    "name": "Abubu.Editor",
-    "rootNamespace": "Abubu",
+    "name": "Abubu.Tests.Runtime",
+    "rootNamespace": "Abubu.Tests",
     "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
         "Abubu.Common",
-        "Abubu.Core",
-        "Abubu.Debugging",
-        "Abubu.Installer",
-        "Abubu.Audio",
+        "Abubu.Pool",
         "Abubu.Effects",
-        "Abubu.Boot",
-        "Abubu.Presentation",
+        "UniTask",
         "Zenject",
-        "UnityEngine.UI"
+        "uPools",
+        "Abubu.Pause",
+        "Abubu.UI",
+        "R3.Unity"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "R3.dll",
+        "Zenject-usage.dll"
+    ],
     "autoReferenced": false,
     "defineConstraints": [
-        "ABUBU_DEPS_LITMOTION",
-        "ABUBU_DEPS_R3",
+        "UNITY_INCLUDE_TESTS",
         "ABUBU_DEPS_UNITASK",
         "ABUBU_DEPS_ZENJECT",
-        "ABUBU_DEPS_UPOOLS"
+        "ABUBU_DEPS_UPOOLS",
+        "ABUBU_DEPS_R3"
     ],
     "versionDefines": [
-        {
-            "name": "com.annulusgames.lit-motion",
-            "expression": "",
-            "define": "ABUBU_DEPS_LITMOTION"
-        },
-        {
-            "name": "com.cysharp.r3",
-            "expression": "",
-            "define": "ABUBU_DEPS_R3"
-        },
         {
             "name": "com.cysharp.unitask",
             "expression": "",
@@ -53,6 +46,11 @@
             "name": "com.annulusgames.u-pools",
             "expression": "",
             "define": "ABUBU_DEPS_UPOOLS"
+        },
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
         }
     ],
     "noEngineReferences": false

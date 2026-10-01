@@ -28,6 +28,16 @@ namespace Abubu.Effects
 
         public IReadOnlyList<EffectEntry> Effects => effects;
 
+        /// <summary>登録されているキー。タイポ時の候補表示やキー定数の生成に使う</summary>
+        public IEnumerable<string> Keys
+        {
+            get
+            {
+                _cache ??= BuildCache();
+                return _cache.Keys;
+            }
+        }
+
         public bool TryGet(string key, out EffectEntry entry)
         {
             _cache ??= BuildCache();
@@ -103,7 +113,8 @@ namespace Abubu.Effects
         {
             if (_library == null || !_library.TryGet(key, out var entry) || entry.Prefab == null)
             {
-                Debug.LogWarning($"[Abubu.Effect] \"{key}\" が EffectLibrary に見つからないか、Prefab が未設定です。");
+                var hint = KeySuggestion.Hint(key, _library != null ? _library.Keys : null);
+                Debug.LogWarning($"[Abubu.Effect] \"{key}\" が EffectLibrary に見つからないか、Prefab が未設定です。{hint}");
                 return null;
             }
 

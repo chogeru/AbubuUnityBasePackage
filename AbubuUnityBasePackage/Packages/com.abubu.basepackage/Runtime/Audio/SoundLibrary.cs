@@ -29,6 +29,16 @@ namespace Abubu.Audio
             return _cache[(int)category].TryGetValue(key, out entry);
         }
 
+        /// <summary>指定カテゴリに登録されているキー (includes 先を含む)。タイポ時の候補表示やキー定数の生成に使う</summary>
+        public IEnumerable<string> GetKeys(SoundCategory category)
+        {
+#if UNITY_EDITOR
+            RebuildInEditor();
+#endif
+            _cache ??= BuildCache();
+            return _cache[(int)category].Keys;
+        }
+
         public IReadOnlyList<SoundEntry> GetEntries(SoundCategory category) => category switch
         {
             SoundCategory.Bgm => bgm,

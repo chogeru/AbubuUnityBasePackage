@@ -105,6 +105,41 @@ namespace Abubu.Setup
         public static void InstallAll() => Install(Required.Concat(Optional).ToArray());
 
         /// <summary>
+        /// manifest.json に書かれたバージョンが、このパッケージが想定する版 (上の Required / Optional の表) と違わないか確認する。
+        /// 導入済みのバージョンは書き換えない (確認して報告するだけ)。
+        /// </summary>
+        /// <remarks>
+        /// 推奨バージョンの正本はこのファイルの表。README の表を更新するときもここに合わせること。
+        /// </remarks>
+        [MenuItem("Tools/Abubu/Install Dependencies/Check Versions", priority = 102)]
+        public static void CheckVersions()
+        {
+            var manifest = File.Exists(ManifestPath) ? File.ReadAllText(ManifestPath) : string.Empty;
+            var mismatches = new List<string>();
+            var checkedCount = 0;
+
+            foreach (var (name, url) in Required.Concat(Optional))
+            {
+                var match = Regex.Match(manifest, "\"" + Regex.Escape(name) + @"""\s*:\s*""([^""]*)""");
+                if (!match.Success) continue;
+
+                checkedCount++;
+                if (match.Groups[1].Value != url)
+                {
+                    mismatches.Add($"・{name}\n    導入済み: {match.Groups[1].Value}\n    推奨: {url}");
+                }
+            }
+
+            if (mismatches.Count == 0)
+            {
+                Debug.Log($"[Abubu] 導入済みの依存 {checkedCount} 件はすべて推奨バージョンです。");
+                return;
+            }
+
+            Debug.LogWarning("[Abubu] 推奨と異なるバージョンの依存があります (動作確認は推奨バージョンで行っています):\n" + string.Join("\n", mismatches));
+        }
+
+        /// <summary>
         /// packages.config を更新し、manifest.json に未登録のパッケージだけを追記して解決させる。
         /// 既に登録済みのパッケージはバージョンを含めて変更しない。
         /// </summary>

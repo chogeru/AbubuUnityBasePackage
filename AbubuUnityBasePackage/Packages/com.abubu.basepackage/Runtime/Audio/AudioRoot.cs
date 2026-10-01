@@ -39,7 +39,8 @@ namespace Abubu.Audio
         {
             if (!string.IsNullOrEmpty(key) && _library.TryGet(category, key, out entry) && entry.HasClip) return true;
 
-            Debug.LogWarning($"[Abubu.Audio] {category} \"{key}\" が SoundLibrary に見つからないか、Clip が未設定です。");
+            var hint = KeySuggestion.Hint(key, _library.GetKeys(category));
+            Debug.LogWarning($"[Abubu.Audio] {category} \"{key}\" が SoundLibrary に見つからないか、Clip が未設定です。{hint}");
             entry = null;
             return false;
         }

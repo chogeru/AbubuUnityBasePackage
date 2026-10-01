@@ -1,16 +1,16 @@
 {
-    "name": "Abubu.Tests.Editor",
+    "name": "Abubu.Tests.Input",
     "rootNamespace": "Abubu.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Abubu.Common",
+        "Abubu.Input",
         "Abubu.Pause",
         "Abubu.Save",
-        "Abubu.Audio",
-        "Abubu.Scene",
-        "Abubu.Events",
-        "R3.Unity"
+        "Unity.InputSystem",
+        "UniTask",
+        "R3.Unity",
+        "Zenject"
     ],
     "includePlatforms": [
         "Editor"
@@ -20,18 +20,23 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "nunit.framework.dll",
-        "R3.dll"
+        "R3.dll",
+        "Zenject-usage.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
         "UNITY_INCLUDE_TESTS",
+        "ABUBU_INPUTSYSTEM",
         "ABUBU_DEPS_UNITASK",
         "ABUBU_DEPS_R3",
-        "ABUBU_DEPS_ZENJECT",
-        "ABUBU_DEPS_UPOOLS",
-        "ABUBU_DEPS_LITMOTION"
+        "ABUBU_DEPS_ZENJECT"
     ],
     "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "ABUBU_INPUTSYSTEM"
+        },
         {
             "name": "com.cysharp.unitask",
             "expression": "",
@@ -46,16 +51,6 @@
             "name": "com.svermeulen.extenject",
             "expression": "",
             "define": "ABUBU_DEPS_ZENJECT"
-        },
-        {
-            "name": "com.annulusgames.u-pools",
-            "expression": "",
-            "define": "ABUBU_DEPS_UPOOLS"
-        },
-        {
-            "name": "com.annulusgames.lit-motion",
-            "expression": "",
-            "define": "ABUBU_DEPS_LITMOTION"
         }
     ],
     "noEngineReferences": false

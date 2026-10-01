@@ -1,9 +1,9 @@
 {
   "name": "com.abubu.basepackage",
   "displayName": "Abubu Base Package",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "unity": "6000.0",
-  "description": "ゲームジャム/新規プロジェクト向けの基盤パッケージ。シーン遷移、BGM/SE/環境音管理、音量設定UI(MVP)を Zenject + UniTask + R3 + uPools + LitMotion で提供します。",
+  "description": "ゲームジャム/新規プロジェクト向けの基盤パッケージ。シーン遷移、サウンド、プール、セーブ、入力、ポップアップ、音量設定UI(MVP)などを Zenject + UniTask + R3 + uPools + LitMotion で提供します。",
   "keywords": [
     "sound",
     "audio",
