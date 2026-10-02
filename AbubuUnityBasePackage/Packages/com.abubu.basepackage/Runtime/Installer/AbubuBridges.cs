@@ -40,7 +40,7 @@ namespace Abubu
         public void Dispose() => _subscription?.Dispose();
     }
 
-    /// <summary>ポーズ状態を BGM / SE / 環境音に反映する (SoundSettings の Pause* に従う)</summary>
+    /// <summary>ポーズ状態を BGM / SE / 環境音 / ボイスに反映する (SoundSettings の Pause* に従う)</summary>
     internal sealed class AudioPauseBridge : IInitializable, IDisposable
     {
         private readonly IPauseService _pause;
@@ -67,6 +67,7 @@ namespace Abubu
             }
             if (_settings.PauseSe) _sound.Se.SetPaused(paused);
             if (_settings.PauseAmbient) _sound.Ambient.SetPaused(paused);
+            if (_settings.PauseVoice) _sound.Voice.SetPaused(paused);
         }
 
         public void Dispose() => _subscription?.Dispose();

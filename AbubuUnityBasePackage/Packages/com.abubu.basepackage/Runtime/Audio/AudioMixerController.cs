@@ -16,6 +16,7 @@ namespace Abubu.Audio
         private readonly SoundSettings _settings;
         private readonly AudioVolumeModel _volume;
         private readonly CompositeDisposable _disposables = new();
+        private readonly System.Collections.Generic.HashSet<string> _warned = new();
 
         public AudioMixerController(SoundSettings settings, AudioVolumeModel volume)
         {
@@ -34,6 +35,7 @@ namespace Abubu.Audio
             Bind(_volume.Bgm, _settings.BgmVolumeParameter);
             Bind(_volume.Se, _settings.SeVolumeParameter);
             Bind(_volume.Ambient, _settings.AmbientVolumeParameter);
+            Bind(_volume.Voice, _settings.VoiceVolumeParameter);
 
             // AudioMixer.SetFloat は起動直後のフレームで無視されることがあるため、1フレーム後にもう一度反映する
             Observable.NextFrame().Subscribe(this, static (_, self) => self.ApplyAll()).AddTo(_disposables);
@@ -52,12 +54,13 @@ namespace Abubu.Audio
             Apply(_settings.BgmVolumeParameter, _volume.Bgm.Value);
             Apply(_settings.SeVolumeParameter, _volume.Se.Value);
             Apply(_settings.AmbientVolumeParameter, _volume.Ambient.Value);
+            Apply(_settings.VoiceVolumeParameter, _volume.Voice.Value);
         }
 
         private void Apply(string parameter, float linear)
         {
             if (string.IsNullOrEmpty(parameter)) return;
-            if (!_settings.Mixer.SetFloat(parameter, LinearToDecibel(linear)))
+            if (!_settings.Mixer.SetFloat(parameter, LinearToDecibel(linear)) && _warned.Add(parameter))
             {
                 Debug.LogWarning($"[Abubu.Audio] AudioMixer に Exposed Parameter \"{parameter}\" がありません。ミキサーで Expose するか SoundSettings のパラメータ名を空にしてください。");
             }

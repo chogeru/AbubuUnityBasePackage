@@ -27,7 +27,7 @@ namespace Abubu.Editor
         }
 
         /// <summary>
-        /// Master / BGM / SE / Ambient のスライダーと Mute トグルを持つパネルを生成し、
+        /// Master / BGM / SE / Ambient / Voice のスライダーと Mute トグルを持つパネルを生成し、
         /// <see cref="VolumeSettingsView"/> に各 UI を結線する。
         /// </summary>
         /// <param name="canvas">パネルを配置する Canvas</param>
@@ -42,7 +42,7 @@ namespace Abubu.Editor
             GameObjectUtility.SetParentAndAlign(panel, canvas.gameObject);
             var panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(480f, 320f);
+            panelRect.sizeDelta = new Vector2(480f, 368f);
 
             var layout = panel.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(24, 24, 24, 24);
@@ -57,6 +57,7 @@ namespace Abubu.Editor
             so.FindProperty("bgm").objectReferenceValue = CreateRow(panel.transform, "BGM", resources);
             so.FindProperty("se").objectReferenceValue = CreateRow(panel.transform, "SE", resources);
             so.FindProperty("ambient").objectReferenceValue = CreateRow(panel.transform, "Ambient", resources);
+            so.FindProperty("voice").objectReferenceValue = CreateRow(panel.transform, "Voice", resources);
 
             // ミュート切り替え用トグル
             var toggleGo = DefaultControls.CreateToggle(resources);

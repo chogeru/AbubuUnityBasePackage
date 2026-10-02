@@ -14,6 +14,7 @@ namespace Abubu.Audio
         [SerializeField] private List<SoundEntry> bgm = new();
         [SerializeField] private List<SoundEntry> se = new();
         [SerializeField] private List<SoundEntry> ambient = new();
+        [SerializeField] private List<SoundEntry> voice = new();
 
         [Tooltip("他のライブラリを取り込む (共通SE集 + ステージ別BGM など分割管理用)")]
         [SerializeField] private List<SoundLibrary> includes = new();
@@ -44,6 +45,7 @@ namespace Abubu.Audio
             SoundCategory.Bgm => bgm,
             SoundCategory.Se => se,
             SoundCategory.Ambient => ambient,
+            SoundCategory.Voice => voice,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
 
@@ -51,6 +53,7 @@ namespace Abubu.Audio
         {
             var cache = new[]
             {
+                new Dictionary<string, SoundEntry>(),
                 new Dictionary<string, SoundEntry>(),
                 new Dictionary<string, SoundEntry>(),
                 new Dictionary<string, SoundEntry>(),

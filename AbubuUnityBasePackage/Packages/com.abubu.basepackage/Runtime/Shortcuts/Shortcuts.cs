@@ -22,16 +22,40 @@ namespace Abubu
     {
         public static ISoundService Service => AbubuServices.TryResolve<ISoundService>();
 
-        public static void PlaySe(string key) => Service?.Se.Play(key);
-        public static void PlaySe(string key, Vector3 position) => Service?.Se.Play(key, position);
-        public static void PlaySe(AudioClip clip, float volume = 1f) => Service?.Se.Play(clip, volume);
-        public static void PlayBgm(string key, float? fadeDuration = null) => Service?.Bgm.PlayAsync(key, fadeDuration).Forget();
-        public static void PlayBgm(AudioClip clip, float volume = 1f) => Service?.Bgm.PlayAsync(clip, volume).Forget();
-        public static void StopBgm(float? fadeDuration = null) => Service?.Bgm.StopAsync(fadeDuration).Forget();
-        public static void PlayAmbient(string key, float? fadeDuration = null) => Service?.Ambient.PlayAsync(key, fadeDuration).Forget();
-        public static void StopAmbient(string key, float? fadeDuration = null) => Service?.Ambient.StopAsync(key, fadeDuration).Forget();
-        public static void StopAllAmbient(float? fadeDuration = null) => Service?.Ambient.StopAllAsync(fadeDuration).Forget();
-        public static AudioVolumeModel Volume => Service?.Volume;
+        private static bool _warnedMissingService;
+
+        // Domain Reload 無効時でも、再生のたびに警告を出し直せるようにする
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => _warnedMissingService = false;
+
+        /// <summary>Service が無いときは一度だけ警告する (Boot シーンを経由せず起動していると何も鳴らないため)</summary>
+        private static ISoundService Svc
+        {
+            get
+            {
+                var service = Service;
+                if (service == null && !_warnedMissingService)
+                {
+                    _warnedMissingService = true;
+                    Debug.LogWarning("[Abubu.Sound] ISoundService が見つかりません。Boot シーンから起動しているか、Tools > Abubu > Validate Setup で確認してください (この警告は一度だけ表示します)。");
+                }
+                return service;
+            }
+        }
+
+        public static void PlaySe(string key) => Svc?.Se.Play(key);
+        public static void PlaySe(string key, Vector3 position) => Svc?.Se.Play(key, position);
+        public static void PlaySe(AudioClip clip, float volume = 1f) => Svc?.Se.Play(clip, volume);
+        public static void PlayBgm(string key, float? fadeDuration = null) => Svc?.Bgm.PlayAsync(key, fadeDuration).Forget();
+        public static void PlayBgm(AudioClip clip, float volume = 1f) => Svc?.Bgm.PlayAsync(clip, volume).Forget();
+        public static void StopBgm(float? fadeDuration = null) => Svc?.Bgm.StopAsync(fadeDuration).Forget();
+        public static void PlayVoice(string key) => Svc?.Voice.Play(key);
+        public static void PlayVoice(string key, Vector3 position) => Svc?.Voice.Play(key, position);
+        public static void StopVoice() => Svc?.Voice.Stop();
+        public static void PlayAmbient(string key, float? fadeDuration = null) => Svc?.Ambient.PlayAsync(key, fadeDuration).Forget();
+        public static void StopAmbient(string key, float? fadeDuration = null) => Svc?.Ambient.StopAsync(key, fadeDuration).Forget();
+        public static void StopAllAmbient(float? fadeDuration = null) => Svc?.Ambient.StopAllAsync(fadeDuration).Forget();
+        public static AudioVolumeModel Volume => Svc?.Volume;
     }
 
     /// <summary>

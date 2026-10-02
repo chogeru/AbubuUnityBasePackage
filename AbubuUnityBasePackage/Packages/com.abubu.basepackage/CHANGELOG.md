@@ -7,6 +7,28 @@
 
 ## [Unreleased]
 
+### Added
+- ボイスカテゴリ (`SoundCategory.Voice` / `IVoicePlayer` / `ISoundService.Voice` / `Sound.PlayVoice`)。SoundLibrary に Voice 欄、音量 (`AudioVolumeModel.Voice`)・ミキサー (`VoiceVolume` / `Voice` グループ)・ポーズ (`PauseVoice`)・音量設定 UI のスライダーに対応。ボイスは 1 本ずつ再生され、新しいボイスが前のボイスを置き換える
+- BGM ダッキング : ボイス再生中は BGM を下げる (`SoundSettings > Ducking`)
+- `SoundEntry.Priority` : SE の同時発音数が上限のとき、優先度の低い音から止める
+- `SoundEntry.AvoidRepeat` : 複数 Clip のとき直前と同じ Clip を続けて選ばない (既定でオン)
+- `Validate Setup` と EditMode テストに「ファイル名と一致せず Missing Script になるクラス」の検出を追加
+- `Sound.*` ショートカットで `ISoundService` が見つからないとき、一度だけ警告を表示
+- `ISaveBackupStorage` : 本体が壊れていたときに 1 つ前のデータ (`.bak`) から復旧する (`FileSaveStorage` が実装)
+- `AbubuUiSettings.CloseOnSceneChange` : シーンが切り替わったらポップアップをすべて閉じる (既定でオン)
+
+### Changed
+- ポップアップのプレハブを DI コンテナ経由で生成するように変更 (ポップアップのコンポーネントで `[Inject]` が使える)
+
+### Fixed
+- `EffectLibrary` が `EffectService.cs` 内にあり Missing Script になる問題 (専用ファイルに分離)
+- `ISePlayer.PlayAsync` がポーズ中も待ち時間が進む問題
+- AudioMixer の Exposed Parameter 未設定の警告が音量変更のたびに出る問題 (パラメータごとに 1 回)
+- シーン遷移後も前のシーンのポップアップが残り、ポーズだけ解除される問題
+- UI モジュールの Installer が二重に実行されていた問題 (`AbubuModuleInstaller` 属性の重複)
+- 読み込めなかったセーブデータ (破損 / マイグレーション未登録) が次の保存で失われる問題 (`キー.broken` に退避)
+- Domain Reload 無効時、`Sound.*` の「サービスが見つからない」警告が 2 回目以降の再生で出ない問題
+
 ## [0.2.0] - 2026-10-01
 
 ### Added

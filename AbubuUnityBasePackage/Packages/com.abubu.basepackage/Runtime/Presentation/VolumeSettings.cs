@@ -15,6 +15,7 @@ namespace Abubu.Presentation
         [SerializeField] private Slider bgm;
         [SerializeField] private Slider se;
         [SerializeField] private Slider ambient;
+        [SerializeField] private Slider voice;
         [SerializeField] private Toggle mute;
 
         [Tooltip("SE スライダーを離したときに鳴らす確認用 SE のキー (任意)")]
@@ -24,6 +25,7 @@ namespace Abubu.Presentation
         public Slider Bgm => bgm;
         public Slider Se => se;
         public Slider Ambient => ambient;
+        public Slider Voice => voice;
         public Toggle Mute => mute;
         public string SePreviewKey => sePreviewKey;
     }
@@ -47,6 +49,7 @@ namespace Abubu.Presentation
             Bind(_view.Bgm, _model.Bgm);
             Bind(_view.Se, _model.Se);
             Bind(_view.Ambient, _model.Ambient);
+            Bind(_view.Voice, _model.Voice);
 
             if (_view.Mute != null)
             {

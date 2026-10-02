@@ -8,6 +8,7 @@
         "Abubu.Pause",
         "Abubu.Save",
         "Abubu.Audio",
+        "Abubu.Editor",
         "Abubu.Scene",
         "Abubu.Events",
         "R3.Unity"

@@ -21,7 +21,7 @@ namespace Abubu.Audio
             _library = settings.Library != null ? settings.Library : ScriptableObject.CreateInstance<SoundLibrary>();
 
             var go = new GameObject("[Abubu.Audio]");
-            Object.DontDestroyOnLoad(go);
+            if (Application.isPlaying) Object.DontDestroyOnLoad(go); // EditMode テストでは不要 (呼ぶとエラーになる)
             Transform = go.transform;
         }
 

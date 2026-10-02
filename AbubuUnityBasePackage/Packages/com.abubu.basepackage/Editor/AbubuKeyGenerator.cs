@@ -77,7 +77,7 @@ namespace Abubu.Editor
             sb.AppendLine("    /// <summary>SoundLibrary のキー定数</summary>");
             sb.AppendLine("    public static class SoundKeys");
             sb.AppendLine("    {");
-            foreach (var category in new[] { SoundCategory.Bgm, SoundCategory.Se, SoundCategory.Ambient })
+            foreach (var category in new[] { SoundCategory.Bgm, SoundCategory.Se, SoundCategory.Ambient, SoundCategory.Voice })
             {
                 sb.AppendLine($"        public static class {category}");
                 sb.AppendLine("        {");

@@ -17,12 +17,14 @@ namespace Abubu.Audio
         public ReactiveProperty<float> Bgm { get; }
         public ReactiveProperty<float> Se { get; }
         public ReactiveProperty<float> Ambient { get; }
+        public ReactiveProperty<float> Voice { get; }
         public ReactiveProperty<bool> Mute { get; }
 
         /// <summary>Master・カテゴリ音量・ミュートを掛け合わせた最終音量</summary>
         public ReadOnlyReactiveProperty<float> EffectiveBgm { get; }
         public ReadOnlyReactiveProperty<float> EffectiveSe { get; }
         public ReadOnlyReactiveProperty<float> EffectiveAmbient { get; }
+        public ReadOnlyReactiveProperty<float> EffectiveVoice { get; }
 
         private readonly ISaveService _save;
         private readonly IDisposable _saveSubscription;
@@ -33,24 +35,26 @@ namespace Abubu.Audio
             defaults ??= new AudioVolumeDefaults();
             var data = save.Load(SaveKey, new AudioVolumeData
             {
-                Master = defaults.Master, Bgm = defaults.Bgm, Se = defaults.Se, Ambient = defaults.Ambient,
+                Master = defaults.Master, Bgm = defaults.Bgm, Se = defaults.Se, Ambient = defaults.Ambient, Voice = defaults.Voice,
             });
 
             Master = new ReactiveProperty<float>(data.Master);
             Bgm = new ReactiveProperty<float>(data.Bgm);
             Se = new ReactiveProperty<float>(data.Se);
             Ambient = new ReactiveProperty<float>(data.Ambient);
+            Voice = new ReactiveProperty<float>(data.Voice);
             Mute = new ReactiveProperty<bool>(data.Mute);
 
             EffectiveBgm = Combine(Bgm);
             EffectiveSe = Combine(Se);
             EffectiveAmbient = Combine(Ambient);
+            EffectiveVoice = Combine(Voice);
 
             // スライダー操作中に毎フレーム書き込まないよう、少し待ってからまとめて保存
             // 購読時に流れる現在値は各ストリームで Skip(1) して、変更だけを拾う
             _saveSubscription = Observable.Merge(
                     Master.Skip(1).AsUnitObservable(), Bgm.Skip(1).AsUnitObservable(), Se.Skip(1).AsUnitObservable(),
-                    Ambient.Skip(1).AsUnitObservable(), Mute.Skip(1).AsUnitObservable())
+                    Ambient.Skip(1).AsUnitObservable(), Voice.Skip(1).AsUnitObservable(), Mute.Skip(1).AsUnitObservable())
                 .Debounce(TimeSpan.FromSeconds(0.5))
                 .Subscribe(this, static (_, self) => self.Save());
         }
@@ -60,6 +64,7 @@ namespace Abubu.Audio
             SoundCategory.Bgm => EffectiveBgm,
             SoundCategory.Se => EffectiveSe,
             SoundCategory.Ambient => EffectiveAmbient,
+            SoundCategory.Voice => EffectiveVoice,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
 
@@ -68,12 +73,13 @@ namespace Abubu.Audio
             SoundCategory.Bgm => Bgm,
             SoundCategory.Se => Se,
             SoundCategory.Ambient => Ambient,
+            SoundCategory.Voice => Voice,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
 
         public void Save() => _save.Save(SaveKey, new AudioVolumeData
         {
-            Master = Master.Value, Bgm = Bgm.Value, Se = Se.Value, Ambient = Ambient.Value, Mute = Mute.Value,
+            Master = Master.Value, Bgm = Bgm.Value, Se = Se.Value, Ambient = Ambient.Value, Voice = Voice.Value, Mute = Mute.Value,
         });
 
         private ReadOnlyReactiveProperty<float> Combine(ReactiveProperty<float> category) =>
@@ -87,10 +93,12 @@ namespace Abubu.Audio
             EffectiveBgm.Dispose();
             EffectiveSe.Dispose();
             EffectiveAmbient.Dispose();
+            EffectiveVoice.Dispose();
             Master.Dispose();
             Bgm.Dispose();
             Se.Dispose();
             Ambient.Dispose();
+            Voice.Dispose();
             Mute.Dispose();
         }
     }
@@ -102,6 +110,7 @@ namespace Abubu.Audio
         public float Bgm = 1f;
         public float Se = 1f;
         public float Ambient = 1f;
+        public float Voice = 1f;
         public bool Mute;
     }
 
@@ -112,5 +121,6 @@ namespace Abubu.Audio
         [Range(0f, 1f)] public float Bgm = 0.7f;
         [Range(0f, 1f)] public float Se = 1f;
         [Range(0f, 1f)] public float Ambient = 0.8f;
+        [Range(0f, 1f)] public float Voice = 1f;
     }
 }

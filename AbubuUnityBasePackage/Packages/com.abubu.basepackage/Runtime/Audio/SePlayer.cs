@@ -20,6 +20,9 @@ namespace Abubu.Audio
         {
             public AudioSource Source;
             public float EntryVolume;
+            public int Priority;
+            /// <summary>プールへ返却されるたびに増える。PlayAsync が「自分の再生が終わったか」を判定するのに使う</summary>
+            public int Id;
         }
 
         private readonly AudioRoot _root;
@@ -47,6 +50,7 @@ namespace Abubu.Audio
                 onRent: v => v.Source.gameObject.SetActive(true),
                 onReturn: v =>
                 {
+                    v.Id++;
                     v.Source.Stop();
                     v.Source.clip = null;
                     v.Source.transform.localPosition = Vector3.zero;
@@ -84,8 +88,11 @@ namespace Abubu.Audio
         {
             if (!TryResolve(key, out var entry)) return;
             var voice = PlayEntry(entry, null);
-            var length = voice.Source.clip.length / Mathf.Max(0.01f, Mathf.Abs(voice.Source.pitch));
-            await UniTask.Delay(TimeSpan.FromSeconds(length), ignoreTimeScale: true, cancellationToken: ct)
+            if (voice == null) return;
+
+            // Tick が再生終了 (ポーズ中は除く) を検知してプールへ返却すると Id が変わる
+            var id = voice.Id;
+            await UniTask.WaitUntil(() => voice.Id != id, cancellationToken: ct)
                 .SuppressCancellationThrow();
         }
 
@@ -140,17 +147,25 @@ namespace Abubu.Audio
 
         private Voice PlayEntry(SoundEntry entry, Vector3? position)
         {
-            // 同時発音数を超えたら最も古い SE を止める (ボイススティール)
+            // 同時発音数を超えたら、優先度が最も低い (同じなら最も古い) SE を止める (ボイススティール)
             if (_active.Count >= _settings.MaxSeVoices)
             {
-                _paused.Remove(_active[0]);
-                _pool.Return(_active[0]);
-                _active.RemoveAt(0);
+                var steal = 0;
+                for (var i = 1; i < _active.Count; i++)
+                {
+                    if (_active[i].Priority < _active[steal].Priority) steal = i;
+                }
+                if (_active[steal].Priority > entry.Priority) return null;
+
+                _paused.Remove(_active[steal]);
+                _pool.Return(_active[steal]);
+                _active.RemoveAt(steal);
             }
 
             var voice = _pool.Rent();
             var source = voice.Source;
             voice.EntryVolume = entry.Volume;
+            voice.Priority = entry.Priority;
 
             source.clip = entry.PickClip();
             source.pitch = entry.PickPitch();

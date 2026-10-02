@@ -58,6 +58,7 @@ namespace Abubu
             container.BindInterfacesTo<BgmPlayer>().AsSingle();
             container.BindInterfacesTo<SePlayer>().AsSingle();
             container.BindInterfacesTo<AmbientPlayer>().AsSingle();
+            container.BindInterfacesTo<VoicePlayer>().AsSingle();
             container.Bind<ISoundService>().To<SoundService>().AsSingle();
 
             // --- Pool / Effect ---
@@ -89,12 +90,15 @@ namespace Abubu
 
         private static void InstallModules(DiContainer container)
         {
+            // 同じ属性が 2 か所に書かれていても、Installer は 1 回だけ実行する (AsSingle の二重登録を防ぐ)
+            var installed = new System.Collections.Generic.HashSet<Type>();
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 // 数百あるアセンブリ全部の属性を読むと起動が遅くなるため、Abubu.* だけを対象にする
                 if (assembly.IsDynamic || !assembly.GetName().Name.StartsWith("Abubu.", StringComparison.Ordinal)) continue;
                 foreach (AbubuModuleInstallerAttribute attribute in assembly.GetCustomAttributes(typeof(AbubuModuleInstallerAttribute), false))
                 {
+                    if (!installed.Add(attribute.InstallerType)) continue;
                     if (Activator.CreateInstance(attribute.InstallerType) is IAbubuModuleInstaller installer)
                     {
                         installer.Install(container);

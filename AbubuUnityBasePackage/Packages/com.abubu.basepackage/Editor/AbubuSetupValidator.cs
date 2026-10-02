@@ -76,7 +76,33 @@ namespace Abubu.Editor
             foreach (var library in FindAssets<SoundLibrary>()) CheckSoundLibrary(library, issues);
             foreach (var library in FindAssets<EffectLibrary>()) CheckEffectLibrary(library, issues);
 
+            foreach (var type in FindUnboundScriptTypes())
+            {
+                issues.Add(new Issue(Level.Error, $"{type.FullName} は同名のファイルに定義されていないため、アセットにアタッチすると Missing Script になります。クラス名と同じ名前の .cs に移してください。"));
+            }
+
             return issues;
+        }
+
+        /// <summary>
+        /// MonoBehaviour / ScriptableObject を継承しているのに、ファイル名と一致せず Unity のスクリプトとして認識されない型を探す。
+        /// (複数のクラスを 1 ファイルに置くと起きる。Abubu 系のアセンブリのみ対象)
+        /// </summary>
+        public static List<System.Type> FindUnboundScriptTypes()
+        {
+            var bound = new HashSet<System.Type>();
+            foreach (var guid in AssetDatabase.FindAssets("t:MonoScript"))
+            {
+                var type = AssetDatabase.LoadAssetAtPath<MonoScript>(AssetDatabase.GUIDToAssetPath(guid))?.GetClass();
+                if (type != null) bound.Add(type);
+            }
+
+            return TypeCache.GetTypesDerivedFrom<MonoBehaviour>()
+                .Concat(TypeCache.GetTypesDerivedFrom<ScriptableObject>())
+                .Where(t => !t.IsAbstract && !t.IsGenericType && !t.IsNested && t.Assembly.GetName().Name.StartsWith("Abubu"))
+                .Where(t => !bound.Contains(t))
+                .OrderBy(t => t.FullName)
+                .ToList();
         }
 
         private static void CheckProjectContext(List<Issue> issues)

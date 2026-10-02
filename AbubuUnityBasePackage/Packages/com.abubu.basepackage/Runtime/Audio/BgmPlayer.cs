@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using LitMotion;
 using R3;
 using UnityEngine;
 
@@ -16,13 +17,17 @@ namespace Abubu.Audio
         private readonly AudioChannel[] _channels;
         private readonly ReactiveProperty<string> _currentKey = new(null);
         private readonly IDisposable _volumeSubscription;
+        private readonly IDisposable _duckSubscription;
 
+        private float _categoryVolume = 1f;
+        private float _duck = 1f;
+        private MotionHandle _duckHandle;
         private int _activeIndex;
         private int _version;
 
         public ReadOnlyReactiveProperty<string> CurrentKey => _currentKey;
 
-        public BgmPlayer(AudioRoot root, SoundSettings settings, AudioVolumeModel volume)
+        public BgmPlayer(AudioRoot root, SoundSettings settings, AudioVolumeModel volume, IVoicePlayer voice)
         {
             _root = root;
             _settings = settings;
@@ -32,10 +37,43 @@ namespace Abubu.Audio
                 new AudioChannel(root.CreateSource("BGM_B", SoundCategory.Bgm)),
             };
 
-            _volumeSubscription = volume.GetSourceVolume(settings, SoundCategory.Bgm).Subscribe(_channels, static (v, channels) =>
+            _volumeSubscription = volume.GetSourceVolume(settings, SoundCategory.Bgm).Subscribe(this, static (v, self) =>
             {
-                foreach (var channel in channels) channel.SetCategoryVolume(v);
+                self._categoryVolume = v;
+                self.ApplyVolume();
             });
+
+            // ボイス再生中は BGM を下げる (終わったら戻す)
+            _duckSubscription = voice.CurrentKey.Subscribe(this, static (key, self) =>
+            {
+                var target = self._settings.DuckBgmOnVoice && key != null ? self._settings.VoiceDuckLevel : 1f;
+                self.DuckTo(target);
+            });
+        }
+
+        private void ApplyVolume()
+        {
+            foreach (var channel in _channels) channel.SetCategoryVolume(_categoryVolume * _duck);
+        }
+
+        private void DuckTo(float target)
+        {
+            _duckHandle.TryCancel();
+            var duration = _settings.DuckFadeDuration;
+            if (duration <= 0f || Mathf.Approximately(_duck, target))
+            {
+                _duck = target;
+                ApplyVolume();
+                return;
+            }
+
+            _duckHandle = LMotion.Create(_duck, target, duration)
+                .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+                .Bind(this, static (x, self) =>
+                {
+                    self._duck = x;
+                    self.ApplyVolume();
+                });
         }
 
         public UniTask PlayAsync(string key, float? fadeDuration = null, CancellationToken ct = default)
@@ -103,6 +141,8 @@ namespace Abubu.Audio
         public void Dispose()
         {
             _volumeSubscription.Dispose();
+            _duckSubscription.Dispose();
+            _duckHandle.TryCancel();
             foreach (var channel in _channels) channel.Stop();
             _currentKey.Dispose();
         }

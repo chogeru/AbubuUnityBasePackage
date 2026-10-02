@@ -21,6 +21,14 @@ namespace Abubu.Audio
         [Tooltip("SE の最大同時発音数。超えた場合は最も古い SE を止めて鳴らす")]
         [Min(1)] public int MaxSeVoices = 32;
 
+        [Header("Ducking")]
+        [Tooltip("ボイス再生中に BGM の音量を下げる")]
+        public bool DuckBgmOnVoice = true;
+        [Tooltip("ボイス再生中の BGM 音量の倍率 (0〜1)")]
+        [Range(0f, 1f)] public float VoiceDuckLevel = 0.4f;
+        [Tooltip("音量を下げる / 戻すのにかける秒数")]
+        [Min(0f)] public float DuckFadeDuration = 0.25f;
+
         [Header("Pause (IPauseService と連動)")]
         [Tooltip("ポーズ中に BGM を一時停止する (オフならポーズ中も流れ続ける)")]
         public bool PauseBgm;
@@ -28,6 +36,8 @@ namespace Abubu.Audio
         public bool PauseSe = true;
         [Tooltip("ポーズ中に環境音を一時停止する")]
         public bool PauseAmbient = true;
+        [Tooltip("ポーズ中に再生中のボイスを一時停止する")]
+        public bool PauseVoice = true;
 
         [Header("Mixer (任意)")]
         [Tooltip("設定すると音量をミキサーの Exposed Parameter で制御する。未設定なら AudioSource.volume で制御")]
@@ -38,12 +48,15 @@ namespace Abubu.Audio
         public AudioMixerGroup SeMixerGroup;
         [Tooltip("未設定なら Mixer 内の \"Ambient\" グループを自動で使う")]
         public AudioMixerGroup AmbientMixerGroup;
+        [Tooltip("未設定なら Mixer 内の \"Voice\" グループを自動で使う")]
+        public AudioMixerGroup VoiceMixerGroup;
 
         [Tooltip("ミキサーで公開 (Expose) した音量パラメータ名。空欄の項目は制御しない")]
         public string MasterVolumeParameter = "MasterVolume";
         public string BgmVolumeParameter = "BgmVolume";
         public string SeVolumeParameter = "SeVolume";
         public string AmbientVolumeParameter = "AmbientVolume";
+        public string VoiceVolumeParameter = "VoiceVolume";
 
         public bool UseMixerVolume => Mixer != null;
 
@@ -54,6 +67,7 @@ namespace Abubu.Audio
                 SoundCategory.Bgm => BgmMixerGroup,
                 SoundCategory.Se => SeMixerGroup,
                 SoundCategory.Ambient => AmbientMixerGroup,
+                SoundCategory.Voice => VoiceMixerGroup,
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
             if (group != null || Mixer == null) return group;
@@ -63,6 +77,7 @@ namespace Abubu.Audio
                 SoundCategory.Bgm => "BGM",
                 SoundCategory.Se => "SE",
                 SoundCategory.Ambient => "Ambient",
+                SoundCategory.Voice => "Voice",
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
             foreach (var candidate in Mixer.FindMatchingGroups(name))
@@ -77,6 +92,7 @@ namespace Abubu.Audio
             SoundCategory.Bgm => BgmVolumeParameter,
             SoundCategory.Se => SeVolumeParameter,
             SoundCategory.Ambient => AmbientVolumeParameter,
+            SoundCategory.Voice => VoiceVolumeParameter,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
     }

@@ -13,11 +13,13 @@ namespace Abubu.Audio
         Se,
         /// <summary>環境音 (風、川、街の雑踏など。複数レイヤー同時再生可)</summary>
         Ambient,
+        /// <summary>キャラクターのセリフ等。再生中のボイスは新しいボイスで置き換わる (重ならない)</summary>
+        Voice,
     }
 
     /// <summary>
     /// SoundLibrary に登録する1サウンド分の定義。
-    /// Clips を複数登録すると再生のたびにランダムで1つ選ばれる (足音などのバリエーション用)。
+    /// Clips を複数登録すると再生のたびにランダムで1つ選ばれる (足音などのバリエーション用。AvoidRepeat で連続を避ける)。
     /// </summary>
     [Serializable]
     public sealed class SoundEntry
@@ -38,12 +40,34 @@ namespace Abubu.Audio
         [Tooltip("0 = 2D, 1 = 3D。位置指定で SE を鳴らすときのみ有効")]
         [Range(0f, 1f)] public float SpatialBlend;
 
+        [Tooltip("SE の同時発音数が上限のとき、優先度の低い音から止められる (大きいほど優先)。新しい音が全ての再生中の音より低ければ鳴らさない")]
+        public int Priority;
+
+        [Tooltip("Clips が複数のとき、直前と同じ Clip を続けて選ばない")]
+        public bool AvoidRepeat = true;
+
+        [NonSerialized] private int _lastIndex = -1;
+
         public bool HasClip => Clips != null && Clips.Length > 0;
 
         public AudioClip PickClip()
         {
             if (!HasClip) return null;
-            return Clips.Length == 1 ? Clips[0] : Clips[UnityEngine.Random.Range(0, Clips.Length)];
+            if (Clips.Length == 1) return Clips[0];
+
+            int index;
+            if (AvoidRepeat && _lastIndex >= 0 && _lastIndex < Clips.Length)
+            {
+                // 直前の 1 つを除いた中から選ぶ
+                index = UnityEngine.Random.Range(0, Clips.Length - 1);
+                if (index >= _lastIndex) index++;
+            }
+            else
+            {
+                index = UnityEngine.Random.Range(0, Clips.Length);
+            }
+            _lastIndex = index;
+            return Clips[index];
         }
 
         public float PickPitch() => UnityEngine.Random.Range(PitchRange.x, PitchRange.y);

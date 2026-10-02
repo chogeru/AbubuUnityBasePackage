@@ -6,7 +6,7 @@
 |---|---|
 | Bootstrap | どのシーンから再生しても共通初期化が先に走る。任意で Boot シーン経由の起動 |
 | シーン遷移 | フェード / ロード画面 / 遷移先へのデータ受け渡し |
-| サウンド | BGM クロスフェード / SE (プール・同時発音数制限・連打防止) / 環境音レイヤー / AudioMixer 対応 |
+| サウンド | BGM クロスフェード / SE (プール・同時発音数制限・連打防止) / 環境音レイヤー / ボイス (重ならない) / AudioMixer 対応 |
 | プール / エフェクト | プレハブ単位の PoolManager、エフェクト + SE の同時再生と自動返却 |
 | セーブ | File / PlayerPrefs 切り替え (WebGL は自動で PlayerPrefs)、バージョン管理とマイグレーション |
 | イベントバス | 登録不要の `IEventBus` (R3)、MessagePipe の Zenject 連携 |
@@ -76,6 +76,8 @@ Sound.PlaySe("explosion", transform.position); // 3D
 Sound.PlayBgm("stage1");                       // クロスフェード
 Sound.PlayAmbient("wind");                     // 環境音は複数重ねられる
 Sound.StopAmbient("wind");
+Sound.PlayVoice("hero_hello");                 // ボイスは SoundLibrary の Voice 欄。再生中のボイスは置き換わる
+Sound.StopVoice();
 
 // シーン
 Scenes.Load("Game");
@@ -128,7 +130,7 @@ Fx.Play(EffectKeys.Explosion, enemy.position);
 
 | メニュー / コンポーネント | 用途 |
 |---|---|
-| `GameObject > Abubu > Volume Settings Panel` | 音量設定 UI を生成 (Master / BGM / SE / 環境音 / ミュート) |
+| `GameObject > Abubu > Volume Settings Panel` | 音量設定 UI を生成 (Master / BGM / SE / 環境音 / ボイス / ミュート) |
 | `GameObject > Abubu > Graphics Settings Panel` | 画面設定 UI を生成 (解像度 / 表示モード / 画質 / FPS / VSync) |
 | `GameObject > Abubu > Debug Overlay` | FPS / メモリ表示をシーンに追加 |
 | `Play BGM On Start` | シーン開始時に BGM 再生 |
@@ -140,7 +142,7 @@ Fx.Play(EffectKeys.Explosion, enemy.position);
 
 | インターフェース | 内容 |
 |---|---|
-| `ISoundService` (`.Bgm` / `.Se` / `.Ambient` / `.Volume`) | サウンド |
+| `ISoundService` (`.Bgm` / `.Se` / `.Ambient` / `.Voice` / `.Volume`) | サウンド |
 | `ISceneService` | シーン遷移 (`IsLoading`, `Progress` を購読可能) |
 | `IEffectService` / `IPoolService` | エフェクト / オブジェクトプール |
 | `ISaveService` | セーブ |
@@ -226,8 +228,8 @@ public sealed class LoadCatalogTask : IBootTask
 | Includes | 他の SoundLibrary を取り込む (共通 SE + ステージ別 BGM など) |
 
 - SE は AudioSource をプールして使い回し、`MaxSeVoices` を超えると最も古い SE を止めて鳴らします。
-- 音量は Master / BGM / SE / 環境音 / ミュートを `AudioVolumeModel` で管理し、自動保存されます。
-- **AudioMixer**: `AbubuSettings > Sound > Mixer` を設定すると、音量をミキサーの Exposed Parameter (`MasterVolume` / `BgmVolume` / `SeVolume` / `AmbientVolume`、名前は変更可) に dB で反映します。グループ未指定なら Mixer 内の `BGM` / `SE` / `Ambient` グループを自動で使います。
+- 音量は Master / BGM / SE / 環境音 / ボイス / ミュートを `AudioVolumeModel` で管理し、自動保存されます。
+- **AudioMixer**: `AbubuSettings > Sound > Mixer` を設定すると、音量をミキサーの Exposed Parameter (`MasterVolume` / `BgmVolume` / `SeVolume` / `AmbientVolume` / `VoiceVolume`、名前は変更可) に dB で反映します。グループ未指定なら Mixer 内の `BGM` / `SE` / `Ambient` / `Voice` グループを自動で使います。
 - キー管理が面倒なら `Sound.PlaySe(audioClip)` のように AudioClip を直接渡しても鳴らせます。
 
 ### エフェクト / プール
@@ -240,7 +242,8 @@ public sealed class LoadCatalogTask : IBootTask
 ### セーブ
 
 - 保存先は `AbubuSettings > Save > Storage` (Auto / File / PlayerPrefs)。Auto は WebGL で PlayerPrefs、それ以外は File。
-- File 保存は一時ファイル経由で書き込むため、書き込み中に落ちてもデータが壊れません。
+- File 保存は一時ファイル経由で書き込むため、書き込み中に落ちてもデータが壊れません。本体が壊れていた場合は 1 つ前のデータ (`.bak`) から復旧します。
+- 復旧できなかったデータ (破損・マイグレーション未登録) は、次の保存で失われないよう `キー.broken` に退避されます。
 - データ形式を変えたら `[SaveVersion(2)]` を付け、`SaveMigration<T>` で旧形式からの変換を書きます。
 
 ```csharp
@@ -290,7 +293,8 @@ _popups.PopAll();
 ```
 
 - プレハブのコンポーネントに `IPopup` を実装すると、`OnOpened` / `OnClosing` の通知を受け取れます。
-- `Resources/AbubuUiSettings` (Create > Abubu > UI Settings) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・Sorting Order を設定できます。
+- プレハブは DI コンテナ経由で生成されるので、ポップアップのコンポーネントで `[Inject]` が使えます (シーンに SceneContext があればそのコンテナ、無ければ ProjectContext)。
+- `Resources/AbubuUiSettings` (Create > Abubu > UI Settings) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・シーン切り替え時に閉じる (`Close On Scene Change`、既定でオン)・Sorting Order を設定できます。
 - Cancel キーで閉じたい場合は `GameInput.Cancel.Subscribe(_ => Popups.Pop())` のように結線します。
 
 ### デバッグ表示

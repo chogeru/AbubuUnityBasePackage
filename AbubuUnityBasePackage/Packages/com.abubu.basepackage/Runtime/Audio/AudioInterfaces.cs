@@ -45,12 +45,29 @@ namespace Abubu.Audio
         void SetPaused(bool paused);
     }
 
+    public interface IVoicePlayer
+    {
+        /// <summary>再生中のボイスキー (未再生なら null)</summary>
+        ReadOnlyReactiveProperty<string> CurrentKey { get; }
+        bool IsPlaying { get; }
+
+        /// <summary>ボイスを鳴らす。再生中のボイスがあれば止めて置き換える (重ならない)。存在しないキーは警告のみ</summary>
+        void Play(string key);
+        /// <summary>ボイスをワールド座標で鳴らす (SpatialBlend &gt; 0 の定義で 3D 音響になる)</summary>
+        void Play(string key, Vector3 position);
+        /// <summary>ボイスを鳴らし、再生終了まで待つ。別のボイスに置き換えられた / Stop された場合もそこで戻る</summary>
+        UniTask PlayAsync(string key, CancellationToken ct = default);
+        void Stop();
+        void SetPaused(bool paused);
+    }
+
     /// <summary>サウンド機能の窓口。基本はこれ1つを Inject すれば良い。</summary>
     public interface ISoundService
     {
         IBgmPlayer Bgm { get; }
         ISePlayer Se { get; }
         IAmbientPlayer Ambient { get; }
+        IVoicePlayer Voice { get; }
         AudioVolumeModel Volume { get; }
     }
 }

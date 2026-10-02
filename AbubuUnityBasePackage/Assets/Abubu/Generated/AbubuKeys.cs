@@ -22,6 +22,9 @@ namespace Abubu
             public const string Rain = "rain";
             public const string Wind = "wind";
         }
+        public static class Voice
+        {
+        }
     }
 
     /// <summary>EffectLibrary のキー定数</summary>

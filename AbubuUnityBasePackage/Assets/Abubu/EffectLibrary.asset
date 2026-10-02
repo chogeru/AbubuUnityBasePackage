@@ -9,9 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 5b1f7c2e9a4d4e6b8c3a0d7e1f2a9b64, type: 3}
   m_Name: EffectLibrary
-  m_EditorClassIdentifier: Abubu.Effects:Abubu.Effects:EffectLibrary
+  m_EditorClassIdentifier: Abubu.Effects::Abubu.Effects.EffectLibrary
   effects:
   - Key: burst
     Prefab: {fileID: 4970872842585057973, guid: dc1344f77d3e5a847b625db1c03b063b, type: 3}

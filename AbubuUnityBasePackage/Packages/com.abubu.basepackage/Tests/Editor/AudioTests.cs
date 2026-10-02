@@ -102,4 +102,117 @@ namespace Abubu.Tests
         public void LinearToDecibel(float linear, float expected) =>
             Assert.That(AudioMixerController.LinearToDecibel(linear), Is.EqualTo(expected).Within(1e-3));
     }
+
+    public sealed class SoundEntryTests
+    {
+        private static SoundEntry Entry(int clipCount, bool avoidRepeat)
+        {
+            var clips = new AudioClip[clipCount];
+            for (var i = 0; i < clipCount; i++) clips[i] = AudioClip.Create("c" + i, 10, 1, 22050, false);
+            return new SoundEntry { Key = "k", Clips = clips, AvoidRepeat = avoidRepeat };
+        }
+
+        private static void Destroy(SoundEntry entry)
+        {
+            foreach (var clip in entry.Clips) Object.DestroyImmediate(clip);
+        }
+
+        [Test]
+        public void AvoidRepeat_NeverPicksSameClipTwiceInARow()
+        {
+            var entry = Entry(3, avoidRepeat: true);
+            try
+            {
+                var previous = entry.PickClip();
+                for (var i = 0; i < 200; i++)
+                {
+                    var next = entry.PickClip();
+                    Assert.That(next, Is.Not.SameAs(previous));
+                    previous = next;
+                }
+            }
+            finally
+            {
+                Destroy(entry);
+            }
+        }
+
+        [Test]
+        public void SingleClip_AlwaysReturnsIt()
+        {
+            var entry = Entry(1, avoidRepeat: true);
+            try
+            {
+                Assert.That(entry.PickClip(), Is.SameAs(entry.Clips[0]));
+                Assert.That(entry.PickClip(), Is.SameAs(entry.Clips[0]));
+            }
+            finally
+            {
+                Destroy(entry);
+            }
+        }
+    }
+
+    public sealed class VoicePlayerTests
+    {
+        private readonly System.Collections.Generic.List<Object> _created = new();
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (var o in _created) Object.DestroyImmediate(o);
+            _created.Clear();
+        }
+
+        private VoicePlayer CreatePlayer(out SoundSettings settings)
+        {
+            var library = ScriptableObject.CreateInstance<SoundLibrary>();
+            var clip = AudioClip.Create("voice", 22050, 1, 22050, false);
+            _created.Add(library);
+            _created.Add(clip);
+            typeof(SoundLibrary).GetField("voice", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .SetValue(library, new System.Collections.Generic.List<SoundEntry>
+                {
+                    new() { Key = "a", Clips = new[] { clip } },
+                    new() { Key = "b", Clips = new[] { clip } },
+                });
+
+            settings = new SoundSettings { Library = library };
+            var root = new AudioRoot(settings);
+            var volume = new AudioVolumeModel(new SaveService(new MemorySaveStorage(), new JsonUtilitySaveSerializer()));
+            _created.Add(root.Transform.gameObject);
+            return new VoicePlayer(root, settings, volume);
+        }
+
+        [Test]
+        public void Play_ReplacesPreviousVoice()
+        {
+            var player = CreatePlayer(out _);
+            player.Play("a");
+            Assert.That(player.CurrentKey.CurrentValue, Is.EqualTo("a"));
+            Assert.That(player.IsPlaying, Is.True);
+
+            player.Play("b");
+            Assert.That(player.CurrentKey.CurrentValue, Is.EqualTo("b"));
+        }
+
+        [Test]
+        public void Stop_ClearsCurrentKey()
+        {
+            var player = CreatePlayer(out _);
+            player.Play("a");
+            player.Stop();
+            Assert.That(player.CurrentKey.CurrentValue, Is.Null);
+            Assert.That(player.IsPlaying, Is.False);
+        }
+
+        [Test]
+        public void UnknownKey_DoesNothing()
+        {
+            var player = CreatePlayer(out _);
+            UnityEngine.TestTools.LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Voice"));
+            player.Play("missing");
+            Assert.That(player.IsPlaying, Is.False);
+        }
+    }
 }
