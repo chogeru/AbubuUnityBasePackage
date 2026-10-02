@@ -81,7 +81,7 @@ namespace Abubu.Save
     /// progress.json.bak  … 1 つ前のデータ (上書き時に File.Replace が作る)
     /// progress.json.tmp  … 書き込み途中の一時ファイル
     /// </remarks>
-    public sealed class FileSaveStorage : ISaveStorage
+    public sealed class FileSaveStorage : ISaveStorage, ISaveBackupStorage
     {
         private readonly string _directory;
 
@@ -113,6 +113,14 @@ namespace Abubu.Save
 
             text = File.ReadAllText(path, Encoding.UTF8);
             return true;
+        }
+
+        /// <inheritdoc />
+        public bool TryReadBackup(string key, out string text)
+        {
+            var backup = GetPath(key) + ".bak";
+            text = File.Exists(backup) ? File.ReadAllText(backup, Encoding.UTF8) : null;
+            return text != null;
         }
 
         /// <inheritdoc />

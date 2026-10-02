@@ -4,6 +4,7 @@ using Abubu.Pause;
 using R3;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.Scripting;
 using UnityEngine.UI;
 using Zenject;
@@ -33,6 +34,8 @@ namespace Abubu.UI
     /// _popups.PopAll();
     /// </code>
     /// 背面を覆う Backdrop が自動で付き、下のポップアップや画面は操作できなくなる。
+    /// プレハブは DI コンテナ経由で生成されるので、ポップアップのコンポーネントで [Inject] が使える
+    /// (アクティブなシーンに SceneContext があればそのコンテナ、無ければ ProjectContext)。
     /// </summary>
     public interface IPopupService
     {
@@ -65,16 +68,27 @@ namespace Abubu.UI
 
         private readonly AbubuUiSettings _settings;
         private readonly IPauseService _pause;
+        private readonly DiContainer _container;
         private readonly List<Entry> _stack = new();
         private readonly ReactiveProperty<int> _count = new(0);
         private Canvas _canvas;
 
         public ReadOnlyReactiveProperty<int> Count => _count;
 
-        public PopupService([InjectOptional] IPauseService pause = null, [InjectOptional] AbubuUiSettings settings = null)
+        /// <param name="container">ポップアップの生成に使うコンテナ。null なら注入なしで Instantiate する (テスト用)</param>
+        public PopupService([InjectOptional] IPauseService pause = null, [InjectOptional] AbubuUiSettings settings = null,
+            [InjectOptional] DiContainer container = null)
         {
             _pause = pause;
             _settings = settings != null ? settings : ScriptableObject.CreateInstance<AbubuUiSettings>();
+            _container = container;
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
+        }
+
+        // Canvas は DontDestroyOnLoad なので、放っておくと前のシーンのポップアップが次のシーンに残る
+        private void OnActiveSceneChanged(UnityEngine.SceneManagement.Scene previous, UnityEngine.SceneManagement.Scene next)
+        {
+            if (_settings.CloseOnSceneChange) PopAll();
         }
 
         public GameObject Push(GameObject prefab)
@@ -85,7 +99,7 @@ namespace Abubu.UI
             var canvas = EnsureCanvas();
 
             var backdrop = CreateBackdrop(canvas.transform);
-            var popup = Object.Instantiate(prefab, canvas.transform);
+            var popup = Instantiate(prefab, canvas.transform);
             popup.name = prefab.name;
             _stack.Add(new Entry { Popup = popup, Backdrop = backdrop });
             UpdateState();
@@ -126,9 +140,26 @@ namespace Abubu.UI
 
         public void Dispose()
         {
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             PopAll();
             _count.Dispose();
             if (_canvas != null) Object.Destroy(_canvas.gameObject);
+        }
+
+        private GameObject Instantiate(GameObject prefab, Transform parent)
+        {
+            if (_container == null) return Object.Instantiate(prefab, parent);
+
+            // シーン側のバインド (Model など) も注入できるよう、アクティブなシーンの SceneContext を優先する
+            var container = _container;
+            var scene = SceneManager.GetActiveScene();
+            foreach (var context in Object.FindObjectsByType<SceneContext>(FindObjectsSortMode.None))
+            {
+                if (context.gameObject.scene != scene || !context.HasResolved) continue;
+                container = context.Container;
+                break;
+            }
+            return container.InstantiatePrefab(prefab, parent);
         }
 
         private static void Close(Entry entry)

@@ -51,6 +51,16 @@ namespace Abubu.Save
     }
 
     /// <summary>
+    /// 1 つ前のデータを別に保持している保存先 (任意)。
+    /// 実装していると、本体が壊れていたときに <see cref="ISaveService"/> がバックアップから復旧する。
+    /// </summary>
+    public interface ISaveBackupStorage
+    {
+        /// <summary>キーに対応する 1 つ前のデータを読む。無ければ false。</summary>
+        bool TryReadBackup(string key, out string text);
+    }
+
+    /// <summary>
     /// データ ⇔ 文字列の変換方法。既定は JsonUtility だが、Newtonsoft.Json や MessagePack などに差し替えられる。
     /// </summary>
     public interface ISaveSerializer

@@ -30,6 +30,9 @@ namespace Abubu.Save
             public string data;
         }
 
+        /// <summary>読み込めなかったデータを退避するキーの接尾辞 ("progress" → "progress.broken")</summary>
+        public const string BrokenSuffix = ".broken";
+
         private readonly ISaveStorage _storage;
         private readonly ISaveSerializer _serializer;
 
@@ -72,13 +75,39 @@ namespace Abubu.Save
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// 本体が壊れていた場合、保存先が <see cref="ISaveBackupStorage"/> ならバックアップからの復旧を試みる。
+        /// 復旧もできなかったデータは、次の Save で上書きされて失われないよう "キー + .broken" に退避する。
+        /// </remarks>
         public bool TryLoad<T>(string key, out T data)
         {
             data = default;
-            if (!_storage.TryRead(key, out var text) || string.IsNullOrEmpty(text)) return false;
+            if (!_storage.TryRead(key, out var text)) return false;
+            if (TryDecode(key, text, out data)) return true;
 
+            if (_storage is ISaveBackupStorage backup && backup.TryReadBackup(key, out var backupText) &&
+                backupText != text && TryDecode(key, backupText, out data))
+            {
+                Debug.LogWarning($"[Abubu.Save] \"{key}\" が壊れていたため、1 つ前のデータから復旧しました。");
+                TryWrite(key, backupText);
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(text) && !key.EndsWith(BrokenSuffix, StringComparison.Ordinal))
+            {
+                TryWrite(key + BrokenSuffix, text);
+            }
+            return false;
+        }
+
+        /// <summary>保存されていた文字列からデータを復元する。失敗したらエラーログを出して false</summary>
+        private bool TryDecode<T>(string key, string text, out T data)
+        {
+            data = default;
             try
             {
+                if (string.IsNullOrEmpty(text)) throw new FormatException("データが空です");
+
                 var envelope = JsonUtility.FromJson<Envelope>(text);
                 if (!string.IsNullOrEmpty(envelope.type) && envelope.type != typeof(T).FullName)
                 {
@@ -106,8 +135,21 @@ namespace Abubu.Save
             }
             catch (Exception e)
             {
+                data = default;
                 Debug.LogError($"[Abubu.Save] \"{key}\" の読み込みに失敗しました: {e}");
                 return false;
+            }
+        }
+
+        private void TryWrite(string key, string text)
+        {
+            try
+            {
+                _storage.Write(key, text);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Abubu.Save] \"{key}\" の書き込みに失敗しました: {e}");
             }
         }
 

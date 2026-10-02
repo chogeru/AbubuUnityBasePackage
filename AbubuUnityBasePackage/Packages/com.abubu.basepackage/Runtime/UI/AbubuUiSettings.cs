@@ -1,15 +1,4 @@
-using System;
-using System.Collections.Generic;
-using Abubu.Pause;
-using R3;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.Scripting;
-using UnityEngine.UI;
-using Zenject;
-using Object = UnityEngine.Object;
-
-[assembly: Abubu.AbubuModuleInstaller(typeof(Abubu.UI.UiModuleInstaller))]
 
 namespace Abubu.UI
 {
@@ -29,6 +18,9 @@ namespace Abubu.UI
 
         [Tooltip("背面をクリックしたら一番上のポップアップを閉じる")]
         public bool CloseOnBackdropClick;
+
+        [Tooltip("シーンが切り替わったら、開いているポップアップをすべて閉じる")]
+        public bool CloseOnSceneChange = true;
 
         [Tooltip("ポップアップ用 Canvas の Sorting Order")]
         public int SortingOrder = 100;

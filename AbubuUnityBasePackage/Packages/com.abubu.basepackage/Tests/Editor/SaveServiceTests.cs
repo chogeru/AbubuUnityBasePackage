@@ -114,6 +114,45 @@ namespace Abubu.Tests
         }
 
         [Test]
+        public void Migration_Missing_KeepsOldDataAsBroken()
+        {
+            new SaveService(_storage, new JsonUtilitySaveSerializer()).Save("p", new ProgressV1 { gold = 5 });
+            var original = _storage.Data["p"];
+
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("ProgressV1"));
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("マイグレーション"));
+            _save.TryLoad<Progress>("p", out _);
+            // 読めなかったデータは、この後の Save で上書きされても残る
+            _save.Save("p", new Progress { Coins = 1 });
+
+            Assert.That(_storage.Data["p" + SaveService.BrokenSuffix], Is.EqualTo(original));
+        }
+
+        [Test]
+        public void Corrupted_RecoversFromBackup()
+        {
+            var folder = "AbubuTests_" + Guid.NewGuid().ToString("N");
+            var storage = new FileSaveStorage(folder);
+            try
+            {
+                var save = new SaveService(storage, new JsonUtilitySaveSerializer());
+                save.Save("p", new Progress { Coins = 1 });
+                save.Save("p", new Progress { Coins = 2 }); // ここで .bak に Coins = 1 が残る
+                File.WriteAllText(Path.Combine(storage.DirectoryPath, "p.json"), "{ broken");
+
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("読み込みに失敗"));
+                LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("復旧"));
+                Assert.That(save.Load<Progress>("p").Coins, Is.EqualTo(1));
+                // 本体も書き直されているので、次回はエラーなしで読める
+                Assert.That(save.Load<Progress>("p").Coins, Is.EqualTo(1));
+            }
+            finally
+            {
+                if (Directory.Exists(storage.DirectoryPath)) Directory.Delete(storage.DirectoryPath, true);
+            }
+        }
+
+        [Test]
         public void WriteFailure_IsLogged_NotThrown()
         {
             _storage.ThrowOnWrite = true;
