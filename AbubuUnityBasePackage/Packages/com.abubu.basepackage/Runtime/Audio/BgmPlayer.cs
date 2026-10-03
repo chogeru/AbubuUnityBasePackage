@@ -135,7 +135,11 @@ namespace Abubu.Audio
             await UniTask.WhenAll(next.FadeAsync(1f, duration, ct), previous.FadeAsync(0f, duration, ct));
 
             // フェード中に別の BGM が要求された場合は、後続の処理に任せる
-            if (version == _version) previous.Stop();
+            if (version != _version) return;
+
+            // キャンセルされた場合も中途半端な音量で止めず、切り替えを完了させる
+            if (ct.IsCancellationRequested) next.SetFadeImmediate(1f);
+            previous.Stop();
         }
 
         public void Dispose()

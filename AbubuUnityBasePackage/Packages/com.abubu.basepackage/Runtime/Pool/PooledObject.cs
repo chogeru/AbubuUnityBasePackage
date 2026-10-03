@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using uPools;
 using UnityEngine;
 
 namespace Abubu.Pool
@@ -22,8 +23,18 @@ namespace Abubu.Pool
         /// <summary>ReturnAfter 用タイマーのキャンセル用。タイマーが動いていないときは null</summary>
         private CancellationTokenSource _timer;
 
+        /// <summary>
+        /// 貸し出し / 返却を通知する相手 (子を含む)。Rent / Return のたびに探すと配列の確保が発生するため、生成時に 1 回だけ集める。
+        /// 生成後に追加したコンポーネントには通知されない
+        /// </summary>
+        internal IPoolCallbackReceiver[] Receivers { get; private set; } = Array.Empty<IPoolCallbackReceiver>();
+
         /// <summary>管理元のプールを登録する (PoolService からのみ呼ばれる)</summary>
-        internal void Bind(PoolService owner) => _owner = owner;
+        internal void Bind(PoolService owner)
+        {
+            _owner = owner;
+            Receivers = GetComponentsInChildren<IPoolCallbackReceiver>(true);
+        }
 
         /// <summary>自分自身をプールに返す</summary>
         public void ReturnToPool() => _owner?.Return(gameObject);

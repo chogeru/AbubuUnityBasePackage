@@ -1,7 +1,9 @@
 {
     "name": "Abubu.Debugging",
     "rootNamespace": "Abubu.Debugging",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -9,6 +11,8 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        { "name": "com.unity.inputsystem", "expression": "", "define": "ABUBU_INPUTSYSTEM" }
+    ],
     "noEngineReferences": false
 }

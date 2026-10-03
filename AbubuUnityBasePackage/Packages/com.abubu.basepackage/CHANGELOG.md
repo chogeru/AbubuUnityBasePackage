@@ -16,9 +16,14 @@
 - `Sound.*` ショートカットで `ISoundService` が見つからないとき、一度だけ警告を表示
 - `ISaveBackupStorage` : 本体が壊れていたときに 1 つ前のデータ (`.bak`) から復旧する (`FileSaveStorage` が実装)
 - `AbubuUiSettings.CloseOnSceneChange` : シーンが切り替わったらポップアップをすべて閉じる (既定でオン)
+- `Generate Keys` が Build Profiles のシーン名から `SceneKeys` も生成
+- `GameInput.Interact` / `IsPressed` / `CurrentDevice` / `SetGameplayEnabled`
+- `DebugOverlay` のキー切り替えが新 Input System のみのプロジェクトでも動作
 
 ### Changed
 - ポップアップのプレハブを DI コンテナ経由で生成するように変更 (ポップアップのコンポーネントで `[Inject]` が使える)
+- static ショートカット (`Sound` / `GameInput` など) が取得したサービスをキャッシュし、呼び出しごとにコンテナを引かないように変更
+- プールの `IPoolCallbackReceiver` をインスタンス生成時に 1 回だけ集めるように変更 (Rent / Return ごとの GC Alloc を削減)。生成後に追加したコンポーネントには通知されない
 
 ### Fixed
 - `EffectLibrary` が `EffectService.cs` 内にあり Missing Script になる問題 (専用ファイルに分離)
@@ -28,6 +33,7 @@
 - UI モジュールの Installer が二重に実行されていた問題 (`AbubuModuleInstaller` 属性の重複)
 - 読み込めなかったセーブデータ (破損 / マイグレーション未登録) が次の保存で失われる問題 (`キー.broken` に退避)
 - Domain Reload 無効時、`Sound.*` の「サービスが見つからない」警告が 2 回目以降の再生で出ない問題
+- BGM のクロスフェードをキャンセルすると、音量が途中のまま残る問題 (切り替えを完了させる)
 
 ## [0.2.0] - 2026-10-01
 

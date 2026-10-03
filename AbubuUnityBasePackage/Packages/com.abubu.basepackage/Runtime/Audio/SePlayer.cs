@@ -30,7 +30,7 @@ namespace Abubu.Audio
         private readonly ObjectPool<Voice> _pool;
         private readonly List<Voice> _active = new();
         private readonly HashSet<Voice> _paused = new();
-        private readonly Dictionary<string, float> _lastPlayedTime = new();
+        private readonly CooldownGate _cooldown = new();
         private readonly IDisposable _volumeSubscription;
         private float _categoryVolume = 1f;
         private int _serial;
@@ -136,13 +136,7 @@ namespace Abubu.Audio
 
         private bool TryResolve(string key, out SoundEntry entry)
         {
-            if (!_root.TryResolve(SoundCategory.Se, key, out entry)) return false;
-            if (entry.Cooldown <= 0f) return true;
-
-            var now = Time.unscaledTime;
-            if (_lastPlayedTime.TryGetValue(key, out var last) && now - last < entry.Cooldown) return false;
-            _lastPlayedTime[key] = now;
-            return true;
+            return _root.TryResolve(SoundCategory.Se, key, out entry) && _cooldown.TryPass(key, entry.Cooldown);
         }
 
         private Voice PlayEntry(SoundEntry entry, Vector3? position)

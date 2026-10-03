@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using R3;
@@ -18,7 +17,7 @@ namespace Abubu.Audio
         private readonly AudioSource _source;
         private readonly ReactiveProperty<string> _currentKey = new();
         private readonly IDisposable _volumeSubscription;
-        private readonly System.Collections.Generic.Dictionary<string, float> _lastPlayedTime = new();
+        private readonly CooldownGate _cooldown = new();
         private float _categoryVolume = 1f;
         private float _entryVolume = 1f;
         private bool _paused;
@@ -93,13 +92,7 @@ namespace Abubu.Audio
 
         private bool TryResolve(string key, out SoundEntry entry)
         {
-            if (!_root.TryResolve(SoundCategory.Voice, key, out entry)) return false;
-            if (entry.Cooldown <= 0f) return true;
-
-            var now = Time.unscaledTime;
-            if (_lastPlayedTime.TryGetValue(key, out var last) && now - last < entry.Cooldown) return false;
-            _lastPlayedTime[key] = now;
-            return true;
+            return _root.TryResolve(SoundCategory.Voice, key, out entry) && _cooldown.TryPass(key, entry.Cooldown);
         }
 
         private int PlayEntry(string key, SoundEntry entry, Vector3? position)

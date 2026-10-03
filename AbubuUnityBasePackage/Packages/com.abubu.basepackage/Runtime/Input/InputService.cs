@@ -312,8 +312,15 @@ namespace Abubu
         public static Vector2 Look => Service?.Look.CurrentValue ?? Vector2.zero;
         public static Observable<Unit> Jump => Service?.Jump ?? Observable.Empty<Unit>();
         public static Observable<Unit> Attack => Service?.Attack ?? Observable.Empty<Unit>();
+        public static Observable<Unit> Interact => Service?.Interact ?? Observable.Empty<Unit>();
         public static Observable<Unit> Submit => Service?.Submit ?? Observable.Empty<Unit>();
         public static Observable<Unit> Cancel => Service?.Cancel ?? Observable.Empty<Unit>();
         public static Observable<Unit> OnPerformed(string actionPath) => Service?.OnPerformed(actionPath) ?? Observable.Empty<Unit>();
+        /// <summary>"Map/Action" 形式で指定したボタンが押されているか</summary>
+        public static bool IsPressed(string actionPath) => Service?.IsPressed(actionPath).CurrentValue ?? false;
+        /// <summary>最後に操作されたデバイスの種類</summary>
+        public static InputDeviceKind CurrentDevice => Service?.CurrentDevice.CurrentValue ?? InputDeviceKind.KeyboardMouse;
+        /// <summary>ゲーム操作用の ActionMap を有効/無効にする (会話中・カットシーン中など)</summary>
+        public static void SetGameplayEnabled(bool enabled) => Service?.SetGameplayEnabled(enabled);
     }
 }

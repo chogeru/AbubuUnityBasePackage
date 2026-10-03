@@ -93,13 +93,17 @@ namespace Abubu.Pool
             protected override void OnRent(GameObject instance)
             {
                 instance.SetActive(true);
-                foreach (var receiver in instance.GetComponentsInChildren<IPoolCallbackReceiver>(true)) receiver.OnRent();
+                if (!instance.TryGetComponent<PooledObject>(out var pooled)) return;
+                foreach (var receiver in pooled.Receivers) receiver.OnRent();
             }
 
             /// <summary>返却時: 通知してから非アクティブ化し、プール用のルートの下に戻す。</summary>
             protected override void OnReturn(GameObject instance)
             {
-                foreach (var receiver in instance.GetComponentsInChildren<IPoolCallbackReceiver>(true)) receiver.OnReturn();
+                if (instance.TryGetComponent<PooledObject>(out var pooled))
+                {
+                    foreach (var receiver in pooled.Receivers) receiver.OnReturn();
+                }
                 instance.SetActive(false);
                 // シーン側の親と一緒に破棄されないよう DontDestroyOnLoad の root に戻す
                 instance.transform.SetParent(_root, false);

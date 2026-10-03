@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 using Object = UnityEngine.Object;
@@ -41,7 +42,30 @@ namespace Abubu
         /// </summary>
         public static T TryResolve<T>() where T : class
         {
-            if (IsAvailable) return Container.TryResolve<T>();
+            if (IsAvailable)
+            {
+                // GameInput.Move のように毎フレーム呼ばれるため、コンテナを引くのは最初の 1 回だけにする。
+                // コンテナが作り直されたら (テストなど) 引き直す。未登録 (null) は、後から登録される場合に備えて覚えない
+                var container = Container;
+                if (!ReferenceEquals(Cache<T>.Container, container))
+                {
+                    var service = container.TryResolve<T>();
+                    if (service == null) return null;
+
+                    if (!Cache<T>.Registered)
+                    {
+                        Cache<T>.Registered = true;
+                        CacheClearers.Add(static () =>
+                        {
+                            Cache<T>.Container = null;
+                            Cache<T>.Value = null;
+                        });
+                    }
+                    Cache<T>.Container = container;
+                    Cache<T>.Value = service;
+                }
+                return Cache<T>.Value;
+            }
 
             if (!_quitting && !_warnedNotSetup)
             {
@@ -60,12 +84,24 @@ namespace Abubu
             // Domain Reload 無効時のために毎回リセットする
             _quitting = false;
             _warnedNotSetup = false;
+            foreach (var clear in CacheClearers) clear();
             // -= してから += することで、何度呼ばれても登録は 1 つだけになる
             Application.quitting -= OnQuitting;
             Application.quitting += OnQuitting;
         }
 
         private static void OnQuitting() => _quitting = true;
+
+        /// <summary><see cref="TryResolve{T}"/> で取得済みのサービス (型ごと)</summary>
+        private static class Cache<T> where T : class
+        {
+            public static DiContainer Container;
+            public static T Value;
+            public static bool Registered;
+        }
+
+        /// <summary>型ごとの Cache を空にする処理の一覧 (再生開始時にまとめて呼ぶ)</summary>
+        private static readonly List<Action> CacheClearers = new();
 
         /// <summary>指定シーンに SceneContext があればそのコンテナ、無ければ ProjectContext のコンテナを返す</summary>
         /// <remarks>

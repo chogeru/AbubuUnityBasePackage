@@ -108,12 +108,13 @@ Popups.Pop();
 
 ### キーの定数化
 
-`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリを編集したら再実行してください)。
+`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary / Build Profiles のシーン一覧から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリやシーン一覧を編集したら再実行してください)。
 
 ```csharp
 Sound.PlaySe(SoundKeys.Se.Jump);
 Sound.PlayBgm(SoundKeys.Bgm.Stage1);
 Fx.Play(EffectKeys.Explosion, enemy.position);
+Scenes.Load(SceneKeys.Game);
 ```
 
 存在しないキーを指定したときの警告には「もしかして: "jump"」のように近いキーが表示されます。
@@ -236,7 +237,7 @@ public sealed class LoadCatalogTask : IBootTask
 
 - `EffectLibrary` に Key / Prefab / SE キー / 寿命 / 事前生成数を登録します。
 - 寿命 0 ならパーティクルの長さから自動計算して返却します (ループするパーティクルは `Stop()` で返却)。
-- プールされたオブジェクトの状態リセットは uPools の `IPoolCallbackReceiver` (`OnRent` / `OnReturn`) に書きます。
+- プールされたオブジェクトの状態リセットは uPools の `IPoolCallbackReceiver` (`OnRent` / `OnReturn`) に書きます。通知先はインスタンス生成時に集めるので、プレハブに最初から付けておいてください。
 - シーン遷移時、貸し出し中のオブジェクトは自動で回収されます。
 
 ### セーブ
@@ -300,7 +301,7 @@ _popups.PopAll();
 ### デバッグ表示
 
 - `DebugOverlay` をシーンに置く (`GameObject > Abubu > Debug Overlay`) か、`DebugOverlay.EnsureExists()` を呼ぶと、FPS・メモリ・timeScale・解像度が表示されます。
-- 画面左上の `Dbg` ボタン (旧 Input Manager が有効ならキー F1 も) で詳細の表示/非表示を切り替えます。
+- 画面左上の `Dbg` ボタンかキー F1 で詳細の表示/非表示を切り替えます。
 - `DebugOverlay.Register("score", () => score.ToString())` で任意の項目を追加できます。リリースビルドでは既定で何も表示しません。
 
 ### セットアップの診断
@@ -333,6 +334,7 @@ Container.Bind<ISceneTransition>().To<MyTransition>().AsSingle();
 ```
 - ロード画面: `SceneLoadingView` を付けたプレハブを `AbubuSettings > Scene > Loading View Prefab` に設定 (表示は `SceneLoadingScreen` が `ISceneService.ShowLoadingScreen` を購読して行います)
 - 自前の ProjectContext Installer から使う: `AbubuInstaller.Install(Container, settings);`
+- 自作モジュールを自動登録する: `IAbubuModuleInstaller` を実装し、アセンブリに `[assembly: AbubuModuleInstaller(typeof(MyInstaller))]` を付けます。走査されるのは名前が `Abubu.` で始まるアセンブリだけなので、asmdef の名前を `Abubu.MyModule` のようにしてください。
 
 ## 対応プラットフォーム
 

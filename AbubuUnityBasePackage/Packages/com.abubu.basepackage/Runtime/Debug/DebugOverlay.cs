@@ -18,7 +18,8 @@ namespace Abubu.Debugging
     /// 画面左上の小さな [Dbg] ボタン (またはキー) で詳細の表示/非表示を切り替える。
     /// </summary>
     /// <remarks>
-    /// 新 Input System のみ有効なプロジェクトではキー切り替えは使えないため、ボタンか <see cref="Toggle"/> を使う。
+    /// キー切り替えは旧 Input Manager / 新 Input System のどちらでも動く。
+    /// 新 Input System では、同じ名前のキーが無い KeyCode を指定した場合は F1 になる。
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class DebugOverlay : MonoBehaviour
@@ -32,7 +33,7 @@ namespace Abubu.Debugging
         [Tooltip("起動時から詳細を表示する")]
         [SerializeField] private bool startVisible = true;
 
-        [Tooltip("詳細の表示/非表示を切り替えるキー (旧 Input Manager が有効な場合のみ)")]
+        [Tooltip("詳細の表示/非表示を切り替えるキー")]
         [SerializeField] private KeyCode toggleKey = KeyCode.F1;
 
         [Tooltip("FPS の平均を取る時間 (秒)")]
@@ -47,6 +48,9 @@ namespace Abubu.Debugging
         private GUIStyle _label;
         private GUIStyle _button;
         private int _styleFontSize;
+#if !ENABLE_LEGACY_INPUT_MANAGER && ENABLE_INPUT_SYSTEM && ABUBU_INPUTSYSTEM
+        private UnityEngine.InputSystem.Key _toggleKey = UnityEngine.InputSystem.Key.F1;
+#endif
 
         /// <summary>詳細を表示しているか</summary>
         public bool Visible
@@ -98,6 +102,13 @@ namespace Abubu.Debugging
 
             _instance = this;
             _visible = startVisible;
+#if !ENABLE_LEGACY_INPUT_MANAGER && ENABLE_INPUT_SYSTEM && ABUBU_INPUTSYSTEM
+            // KeyCode と Key は名前が同じものが多い (F1〜F12、英字、Space、Tab など)。対応が無ければ F1 のまま
+            if (Enum.TryParse<UnityEngine.InputSystem.Key>(toggleKey.ToString(), out var key) && key != UnityEngine.InputSystem.Key.None)
+            {
+                _toggleKey = key;
+            }
+#endif
             if (onlyInDevelopmentBuild && !Debug.isDebugBuild) enabled = false;
         }
 
@@ -110,6 +121,9 @@ namespace Abubu.Debugging
         {
 #if ENABLE_LEGACY_INPUT_MANAGER
             if (UnityEngine.Input.GetKeyDown(toggleKey)) Toggle();
+#elif ENABLE_INPUT_SYSTEM && ABUBU_INPUTSYSTEM
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard[_toggleKey].wasPressedThisFrame) Toggle();
 #endif
 
             // timeScale が 0 でも測れるよう unscaledDeltaTime を使う
