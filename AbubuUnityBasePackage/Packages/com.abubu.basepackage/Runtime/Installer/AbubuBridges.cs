@@ -150,23 +150,16 @@ namespace Abubu
     /// 中断時・終了時に、バックグラウンドで書き込み中のセーブを終わらせる (書き込みの途中でアプリが落とされないように)。
     /// 中断のきっかけ (SuspendTriggers) に Quit が含まれていなくても、終了時は必ず待つ
     /// </summary>
-    internal sealed class SaveFlushOnSuspend : IAppSuspendHandler, IInitializable, IDisposable
+    /// <remarks>IAppLifecycle を受け取らない (AppLifecycleService が IAppSuspendHandler の一覧を受け取るので、受け取ると循環参照になる)</remarks>
+    internal sealed class SaveFlushOnSuspend : IAppSuspendHandler, IAppQuitHandler
     {
         private readonly ISaveService _save;
-        private readonly IAppLifecycle _app;
-        private IDisposable _subscription;
 
-        public SaveFlushOnSuspend(ISaveService save, IAppLifecycle app)
-        {
-            _save = save;
-            _app = app;
-        }
-
-        public void Initialize() => _subscription = _app.OnQuit.Subscribe(this, static (_, self) => self._save.Flush());
+        public SaveFlushOnSuspend(ISaveService save) => _save = save;
 
         public void OnSuspend() => _save.Flush();
 
-        public void Dispose() => _subscription?.Dispose();
+        public void OnQuit() => _save.Flush();
     }
 
     /// <summary>フォーカスが外れている間のポーズ・消音 (AppSettings.PauseOnFocusLost / MuteOnFocusLost)</summary>

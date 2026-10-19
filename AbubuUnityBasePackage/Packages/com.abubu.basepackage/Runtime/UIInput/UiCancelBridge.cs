@@ -19,20 +19,23 @@ namespace Abubu.UI
         private readonly IInputService _input;
         private readonly IPopupService _popups;
         private readonly IScreenService _screens;
+        private readonly bool _enabled;
         private IDisposable _subscription;
 
         /// <param name="input">Input モジュールが無効なら null (何もしない)</param>
         public UiCancelBridge([InjectOptional] IInputService input = null, [InjectOptional] IPopupService popups = null,
-            [InjectOptional] IScreenService screens = null)
+            [InjectOptional] IScreenService screens = null, [InjectOptional] AbubuUiSettings settings = null)
         {
             _input = input;
             _popups = popups;
             _screens = screens;
+            // 設定アセットが無いときは既定値 (オフ)
+            _enabled = settings != null && settings.BackOnCancel;
         }
 
         public void Initialize()
         {
-            if (_input == null) return;
+            if (_input == null || !_enabled) return;
             _subscription = _input.Cancel.Subscribe(this, static (_, self) => UiNavigation.Back(self._popups, self._screens));
         }
 
@@ -48,10 +51,10 @@ namespace Abubu.UI
 
         public void Install(DiContainer container)
         {
-            var settings = UiModuleInstaller.ResolveSettings(container);
-            if (settings != null && settings.BackOnCancel) container.BindInterfacesTo<UiCancelBridge>().AsSingle().NonLazy();
-            // 設定アセットが無いときは既定値 (KeepFocusOnNavigate = オン) に従う
-            if (settings == null || settings.KeepFocusOnNavigate) container.BindInterfacesTo<UiFocusBridge>().AsSingle().NonLazy();
+            // 有効かどうか (BackOnCancel / KeepFocusOnNavigate) は各ブリッジが Initialize で設定を見て決める (インストール中に Resolve しない)
+            UiModuleInstaller.BindSettings(container);
+            container.BindInterfacesTo<UiCancelBridge>().AsSingle().NonLazy();
+            container.BindInterfacesTo<UiFocusBridge>().AsSingle().NonLazy();
         }
     }
 }

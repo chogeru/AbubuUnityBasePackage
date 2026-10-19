@@ -17,6 +17,7 @@ namespace Abubu.UI
         private readonly IPopupService _popups;
         private readonly IScreenService _screens;
         private readonly string _navigateActionPath;
+        private readonly bool _enabled;
         private readonly CompositeDisposable _subscriptions = new();
 
         /// <param name="input">Input モジュールが無効なら null (何もしない)</param>
@@ -27,11 +28,13 @@ namespace Abubu.UI
             _popups = popups;
             _screens = screens;
             _navigateActionPath = settings != null ? settings.NavigateActionPath : "UI/Navigate";
+            // 設定アセットが無いときは既定値 (オン)
+            _enabled = settings == null || settings.KeepFocusOnNavigate;
         }
 
         public void Initialize()
         {
-            if (_input == null) return;
+            if (_input == null || !_enabled) return;
 
             if (!string.IsNullOrEmpty(_navigateActionPath))
             {

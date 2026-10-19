@@ -84,6 +84,14 @@ namespace Abubu
         public string[] ExcludedModules = Array.Empty<string>();
     }
 
+    /// <summary>
+    /// 「パッケージ自身の文言をローカライズする (Integration.LocalizePackageUi)」の目印。
+    /// 任意モジュールの Installer は、インストール中に AbubuSettings を Resolve せず HasBinding で判定する
+    /// </summary>
+    public sealed class PackageUiLocalizationEnabled
+    {
+    }
+
     /// <summary>機能同士の連携の設定</summary>
     [Serializable]
     public sealed class AbubuIntegrationSettings

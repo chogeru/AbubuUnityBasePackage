@@ -47,6 +47,8 @@ namespace Abubu
             var modules = settings.Modules ?? new AbubuModules();
             container.BindInstance(settings).IfNotBound();
             if (settings.Ui != null) container.BindInstance(settings.Ui).IfNotBound();
+            // 任意モジュールがインストール中に AbubuSettings を Resolve せずに判定できるよう、目印として登録する
+            if (settings.Integration.LocalizePackageUi) container.BindInstance(new PackageUiLocalizationEnabled());
             BindModuleSettings(container, settings.ModuleSettings);
 
             // --- 機能ごとの登録 (Save / Pause は他の機能が使うので常に登録する) ---

@@ -66,6 +66,21 @@ namespace Abubu.Tests
         }
 
         [Test]
+        public void AppLifecycle_ResolvesWithoutCircularDependency()
+        {
+            // 中断時の処理 (IAppSuspendHandler / IAppQuitHandler) が IAppLifecycle を受け取ると循環参照になる
+            _settings.Modules.Sound = false;
+            _settings.Modules.Graphics = false;
+            _settings.Modules.AutoInstallModules = false;
+            var container = new DiContainer();
+            container.Bind<ISaveStorage>().FromInstance(new MemorySaveStorage());
+
+            AbubuInstaller.Install(container, _settings);
+
+            Assert.DoesNotThrow(() => container.Resolve<IAppLifecycle>());
+        }
+
+        [Test]
         public void SingleModuleInstaller_WorksAlone()
         {
             var container = new DiContainer();

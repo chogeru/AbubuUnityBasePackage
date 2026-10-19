@@ -52,6 +52,16 @@ namespace Abubu.App
     }
 
     /// <summary>
+    /// アプリの終了時に呼ばれる (中断のきっかけ SuspendTriggers の設定に関係なく、終了時は必ず呼ばれる)。
+    /// IAppLifecycle を受け取らずに済むので、IAppLifecycle が使う側から循環参照にならない。
+    /// </summary>
+    /// <remarks>モバイル・WebGL では呼ばれないことがある。保存は IAppSuspendHandler で行うこと。</remarks>
+    public interface IAppQuitHandler
+    {
+        void OnQuit();
+    }
+
+    /// <summary>
     /// アプリの中断・復帰・終了の通知。
     /// モバイルはバックグラウンドに回ったあと終了処理なしで落とされることがあるため、保存は <see cref="OnSuspend"/> で行う。
     /// <code>
@@ -80,6 +90,7 @@ namespace Abubu.App
     {
         private readonly AppSettings _settings;
         private readonly List<IAppSuspendHandler> _handlers;
+        private readonly List<IAppQuitHandler> _quitHandlers;
         private readonly SuspendTrigger _triggers;
         private readonly ReactiveProperty<bool> _isFocused = new(true);
         private readonly ReactiveProperty<bool> _isSuspended = new(false);
@@ -95,8 +106,10 @@ namespace Abubu.App
         public Observable<Unit> OnResume => _onResume;
         public Observable<Unit> OnQuit => _onQuit;
 
-        public AppLifecycleService([InjectOptional] AppSettings settings = null, [InjectOptional] List<IAppSuspendHandler> handlers = null)
+        public AppLifecycleService([InjectOptional] AppSettings settings = null, [InjectOptional] List<IAppSuspendHandler> handlers = null,
+            [InjectOptional] List<IAppQuitHandler> quitHandlers = null)
         {
+            _quitHandlers = quitHandlers ?? new List<IAppQuitHandler>();
             _settings = settings ?? new AppSettings();
             _handlers = handlers ?? new List<IAppSuspendHandler>();
             _triggers = _settings.SuspendTriggers;
@@ -139,6 +152,17 @@ namespace Abubu.App
             _quitting = true;
             // 中断中に終了した場合は、中断時に保存済み
             if ((_triggers & SuspendTrigger.Quit) != 0) Suspend();
+            foreach (var handler in _quitHandlers)
+            {
+                try
+                {
+                    handler.OnQuit();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
             _onQuit.OnNext(Unit.Default);
         }
 

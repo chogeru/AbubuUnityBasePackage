@@ -62,8 +62,7 @@ namespace Abubu.Input.UI
         public void Install(DiContainer container)
         {
             // View の Labels を自分で編集している場合に上書きしないよう、Integration.LocalizePackageUi に従う
-            var settings = container.TryResolve<AbubuSettings>();
-            if (settings != null && !settings.Integration.LocalizePackageUi) return;
+            if (!container.HasBinding<PackageUiLocalizationEnabled>()) return;
             if (!container.HasBinding<ILocalizationService>() || container.HasBinding<IRebindLabels>()) return;
             container.Bind<IRebindLabels>().To<LocalizedRebindLabels>().AsSingle();
         }

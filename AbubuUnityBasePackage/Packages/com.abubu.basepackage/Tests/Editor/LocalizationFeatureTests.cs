@@ -237,8 +237,9 @@ namespace Abubu.Tests
                 var text = go.AddComponent<Text>();
                 text.font = original;
                 var localized = go.AddComponent<LocalizedText>();
-                localized.Key = "start";
+                // 先にサービスを渡す (Key の設定で表示が更新されるとき、未設定だと Loc.Service = 本物の ProjectContext を使ってしまう)
                 localized.SetService(loc);
+                localized.Key = "start";
                 localized.Refresh();
                 Assert.That(text.text, Is.EqualTo("Start"));
                 Assert.That(text.font, Is.SameAs(original));

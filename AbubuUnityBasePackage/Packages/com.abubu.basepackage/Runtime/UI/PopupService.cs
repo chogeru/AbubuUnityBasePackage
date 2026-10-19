@@ -366,23 +366,23 @@ namespace Abubu.UI
 
         public void Install(DiContainer container)
         {
-            var settings = ResolveSettings(container);
+            BindSettings(container);
             container.Bind<IUiFactory>().To<ContainerUiFactory>().AsSingle().IfNotBound();
-            if (!container.HasBinding<IPopupService>()) container.BindInterfacesTo<PopupService>().AsSingle().WithArguments(settings);
-            if (!container.HasBinding<IScreenService>()) container.BindInterfacesTo<ScreenService>().AsSingle().WithArguments(settings);
-            if (!container.HasBinding<IDialogService>()) container.BindInterfacesTo<DialogService>().AsSingle().WithArguments(settings);
-            if (!container.HasBinding<IToastService>()) container.BindInterfacesTo<ToastService>().AsSingle().WithArguments(settings);
+            // 各サービスは [InjectOptional] AbubuUiSettings で設定を受け取る (インストール中に Resolve しない)
+            if (!container.HasBinding<IPopupService>()) container.BindInterfacesTo<PopupService>().AsSingle();
+            if (!container.HasBinding<IScreenService>()) container.BindInterfacesTo<ScreenService>().AsSingle();
+            if (!container.HasBinding<IDialogService>()) container.BindInterfacesTo<DialogService>().AsSingle();
+            if (!container.HasBinding<IToastService>()) container.BindInterfacesTo<ToastService>().AsSingle();
         }
 
         /// <summary>
-        /// UI の設定。コンテナにバインド済みのもの (AbubuSettings.Ui) → Resources/AbubuUiSettings → 既定値 (null) の順に探す
+        /// UI の設定を登録する。AbubuSettings.Ui (登録済み) → Resources/AbubuUiSettings の順。どちらも無ければ登録せず、各サービスが既定値を使う
         /// </summary>
-        public static AbubuUiSettings ResolveSettings(DiContainer container)
+        public static void BindSettings(DiContainer container)
         {
-            if (container.HasBinding<AbubuUiSettings>()) return container.Resolve<AbubuUiSettings>();
+            if (container.HasBinding<AbubuUiSettings>()) return;
             var settings = Resources.Load<AbubuUiSettings>(AbubuUiSettings.ResourcePath);
             if (settings != null) container.BindInstance(settings);
-            return settings;
         }
     }
 }

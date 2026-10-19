@@ -65,10 +65,13 @@ namespace Abubu.Tests
             try
             {
                 yield return null;
+                _dialogs.ConfirmAsync("Delete?").Forget();
+                // 開いたときは組み込みのダイアログの初期選択 (OK) が選ばれている
+                Assert.That(EventSystem.current.currentSelectedGameObject.transform.IsChildOf(_popups.Current.transform), Is.True);
+
+                // マウスなどで裏の UI が選ばれた状態から、ポップアップの中に戻す
                 var outside = new GameObject("Outside", typeof(RectTransform), typeof(Image), typeof(Button));
                 EventSystem.current.SetSelectedGameObject(outside);
-
-                _dialogs.ConfirmAsync("Delete?").Forget();
                 Assert.That(UiNavigation.EnsureSelection(_popups, null), Is.True);
                 Assert.That(EventSystem.current.currentSelectedGameObject.transform.IsChildOf(_popups.Current.transform), Is.True);
                 // すでにポップアップの中が選ばれていれば何もしない

@@ -105,8 +105,10 @@ namespace Abubu.Localization
             var isDefault = container.HasBinding<DefaultLocalizationSourceMarker>();
             if (container.HasBinding<ILocalizationSource>() && !isDefault) return;
 
-            var settings = container.Resolve<UnityLocalizationSourceSettings>();
-            container.Rebind<ILocalizationSource>().FromInstance(new UnityLocalizationSource(settings.TableName));
+            // インストール中に設定を Resolve しないよう、生成は使われるときまで遅らせる
+            container.Rebind<ILocalizationSource>()
+                .FromMethod(ctx => new UnityLocalizationSource(ctx.Container.Resolve<UnityLocalizationSourceSettings>().TableName))
+                .AsSingle();
         }
     }
 }
