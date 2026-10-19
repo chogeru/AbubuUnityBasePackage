@@ -4,6 +4,7 @@
     "references": [
         "Abubu.Core",
         "Abubu.Pause",
+        "UniTask",
         "R3.Unity",
         "Zenject",
         "UnityEngine.UI"
@@ -16,10 +17,12 @@
     "autoReferenced": true,
     "defineConstraints": [
         "ABUBU_DEPS_R3",
+        "ABUBU_DEPS_UNITASK",
         "ABUBU_DEPS_ZENJECT"
     ],
     "versionDefines": [
         { "name": "com.cysharp.r3", "expression": "", "define": "ABUBU_DEPS_R3" },
+        { "name": "com.cysharp.unitask", "expression": "", "define": "ABUBU_DEPS_UNITASK" },
         { "name": "com.svermeulen.extenject", "expression": "", "define": "ABUBU_DEPS_ZENJECT" }
     ],
     "noEngineReferences": false

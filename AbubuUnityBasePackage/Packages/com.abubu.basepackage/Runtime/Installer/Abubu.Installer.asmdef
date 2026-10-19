@@ -13,6 +13,10 @@
         "Abubu.Graphics",
         "Abubu.Boot",
         "Abubu.Presentation",
+        "Abubu.Logging",
+        "Abubu.Localization",
+        "Abubu.App",
+        "Abubu.UI",
         "R3.Unity",
         "Zenject"
     ],

@@ -1,6 +1,7 @@
 using System.Linq;
 using Abubu.Audio;
 using Abubu.Effects;
+using Abubu.Localization;
 using UnityEditor;
 using UnityEngine;
 using Zenject;
@@ -9,7 +10,7 @@ namespace Abubu.Editor
 {
     /// <summary>
     /// Tools > Abubu > Setup Project
-    /// AbubuSettings / SoundLibrary と、AbubuInstaller 入りの Resources/ProjectContext.prefab を生成する。
+    /// AbubuSettings / SoundLibrary / EffectLibrary / LocalizationTable と、AbubuInstaller 入りの Resources/ProjectContext.prefab を生成する。
     /// 既に ProjectContext がある場合は AbubuInstaller を追加するだけ (既存の Installer は保持)。
     /// </summary>
     /// <remarks>
@@ -23,6 +24,7 @@ namespace Abubu.Editor
         private const string SettingsPath = RootFolder + "/AbubuSettings.asset";
         private const string LibraryPath = RootFolder + "/SoundLibrary.asset";
         private const string EffectLibraryPath = RootFolder + "/EffectLibrary.asset";
+        private const string LocalizationTablePath = RootFolder + "/LocalizationTable.asset";
 
         /// <summary>
         /// ProjectContext が見つからなかったときに新規作成するパス。
@@ -41,9 +43,11 @@ namespace Abubu.Editor
             // 各ライブラリと設定アセットを用意し、設定側の参照が空ならライブラリを割り当てる
             var library = LoadOrCreate<SoundLibrary>(LibraryPath);
             var effectLibrary = LoadOrCreate<EffectLibrary>(EffectLibraryPath);
+            var localizationTable = LoadOrCreate<LocalizationTable>(LocalizationTablePath);
             var settings = LoadOrCreate<AbubuSettings>(SettingsPath);
             if (settings.Sound.Library == null) settings.Sound.Library = library;
             if (settings.Effect.Library == null) settings.Effect.Library = effectLibrary;
+            if (settings.Localization.Table == null) settings.Localization.Table = localizationTable;
             EditorUtility.SetDirty(settings);
 
             // ProjectContext が無ければ作り、あれば Installer を追加する

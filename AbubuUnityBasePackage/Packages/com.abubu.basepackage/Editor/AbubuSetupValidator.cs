@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Abubu.Audio;
 using Abubu.Effects;
+using Abubu.Localization;
 using UnityEditor;
 using UnityEngine;
 using Zenject;
@@ -45,6 +46,7 @@ namespace Abubu.Editor
 
             foreach (var issue in issues.Where(i => i.Level == Level.Error)) Debug.LogError("[Abubu.Validate] " + issue.Message);
             foreach (var issue in issues.Where(i => i.Level == Level.Warning)) Debug.LogWarning("[Abubu.Validate] " + issue.Message);
+            foreach (var issue in issues.Where(i => i.Level == Level.Info)) Debug.Log("[Abubu.Validate] " + issue.Message);
 
             if (errors == 0 && warnings == 0)
             {
@@ -75,6 +77,7 @@ namespace Abubu.Editor
 
             foreach (var library in FindAssets<SoundLibrary>()) CheckSoundLibrary(library, issues);
             foreach (var library in FindAssets<EffectLibrary>()) CheckEffectLibrary(library, issues);
+            foreach (var table in FindAssets<LocalizationTable>()) CheckLocalizationTable(table, issues);
 
             foreach (var type in FindUnboundScriptTypes())
             {
@@ -148,6 +151,11 @@ namespace Abubu.Editor
                 issues.Add(new Issue(Level.Warning, "Build Profiles に有効なシーンがありません。ビルドしても起動するシーンがありません。"));
             }
 
+            if (settings.Save.FolderName == "Save")
+            {
+                issues.Add(new Issue(Level.Info, $"{name}: Save > Folder Name が \"Save\" です。同じ persistentDataPath を使う他のセーブデータと衝突する可能性があります (既定値は \"AbubuSave\")。"));
+            }
+
             CheckSceneRegistered(name, "Boot > Boot Scene Name", settings.Boot.BootSceneName, scenesInBuild, issues);
             CheckSceneRegistered(name, "Boot > First Scene Name", settings.Boot.FirstSceneName, scenesInBuild, issues);
         }
@@ -204,6 +212,36 @@ namespace Abubu.Editor
                 {
                     issues.Add(new Issue(Level.Warning, $"{name}: \"{entry.Key}\" の SeKey \"{entry.SeKey}\" が SoundLibrary の SE に見つかりません。{KeySuggestion.Hint(entry.SeKey, seKeys)}"));
                 }
+            }
+        }
+
+        private static void CheckLocalizationTable(LocalizationTable table, List<Issue> issues)
+        {
+            var name = AssetDatabase.GetAssetPath(table);
+            var seen = new HashSet<string>();
+            foreach (var entry in table.Entries)
+            {
+                if (entry == null) continue;
+                if (string.IsNullOrWhiteSpace(entry.Key))
+                {
+                    issues.Add(new Issue(Level.Warning, $"{name}: キーが空のエントリがあります。"));
+                    continue;
+                }
+                if (!seen.Add(entry.Key.Trim())) issues.Add(new Issue(Level.Warning, $"{name}: キー \"{entry.Key}\" が重複しています (後に登録されたものが使われます)。"));
+            }
+
+            if (table.CsvSources.Any(c => c == null)) issues.Add(new Issue(Level.Warning, $"{name}: Csv Sources に未設定の項目があります。"));
+
+            // 言語ごとの未翻訳キー。数が多くなりがちなので件数と先頭のいくつかだけを出す
+            var built = table.Build();
+            var keys = built.Values.SelectMany(v => v.Keys).Distinct().ToList();
+            foreach (var language in table.GetAllLanguages())
+            {
+                var values = built.TryGetValue(language, out var v) ? v : new Dictionary<string, string>();
+                var missing = keys.Where(k => !values.ContainsKey(k)).OrderBy(k => k, System.StringComparer.Ordinal).ToList();
+                if (missing.Count == 0) continue;
+                var sample = string.Join(", ", missing.Take(5).Select(k => $"\"{k}\""));
+                issues.Add(new Issue(Level.Warning, $"{name}: {language} に未翻訳のキーが {missing.Count} 件あります ({sample}{(missing.Count > 5 ? " ..." : "")})。フォールバック言語の文字列が使われます。"));
             }
         }
 

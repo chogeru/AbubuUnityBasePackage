@@ -7,7 +7,39 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+- `ISaveService.Save` が bool を返すように変更し、`ForceSave<T>` を追加。新しいバージョンで保存されたデータは読み込まず (`TryLoad` が false)、`キー.newer` に 1 回だけ退避する。そのキーへの `Save` は `ForceSave` か `Delete` まで false を返す。`.bak` から復旧しても `.bak` は残す。`Delete` は `.broken` / `.newer` / `.tmp` も消す。File 保存の既定フォルダを `Save` から `AbubuSave` に変更 (既存の設定アセットの値はそのまま)
+- `ISceneService` の Load / LoadWithPayload / Reload / LoadAdditive / Unload が `UniTask<bool>` を返すように変更 (遷移中などで受け付けなかった場合は false)。キャンセル時は元のシーンにフェードで戻ってから `OperationCanceledException` を投げる
+- `IEventBus.Receive` が Subject を返さないように変更 (購読専用)
+- static ショートカットは、サービスが見つからないとき何もせずに戻る代わりに、型ごとに 1 回エラーを出すように変更。`Saves.Save` は bool を返す
+- `ViewBase` の Start / OnDestroy を private にし、派生クラスは `OnViewStart` / `OnViewDestroy` を使うように変更
+- `GraphicsSettingsModel` は状態だけを持つように変更 (変更は `Set*`、反映は `GraphicsSettingsApplier`、保存は `GraphicsSettingsStore`)。初回起動時に既定値を反映しない
+- `AudioVolumeModel` の音量を読み取り専用にし、`Set(VolumeChannel, float)` / `SetMute(bool)` / `Get(VolumeChannel)` / `Reload()` を追加
+- `IInputService` は既定で ActionMap の有効・無効を切り替えないように変更。ポーズ中に `Player` を無効にしていた場合は `PauseDisabledMaps` に `Player` を追加する
+- Abubu と関係のない ProjectContext を自動で作らないように変更
+- `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
+
 ### Added
+- ログ (`AbubuLog` / `LogChannel`) : カテゴリ別の ON/OFF、最低レベル、リリースビルドでの Debug / Info の除去 (`ABUBU_LOG_VERBOSE` で残せる)、ログのファイル出力 (`AbubuSettings > Log`)
+- ローカライズ (`ILocalizationService` / `Loc` / `LocalizationTable` / `LocalizedText`) : ScriptableObject と CSV の翻訳テーブル、端末言語の判定、選んだ言語の保存、フォールバック、取得元の差し替え (`ILocalizationSource`)。`Validate Setup` の未翻訳チェックと `Generate Keys` の `LocKeys`、`Setup Project` での `LocalizationTable.asset` の生成
+- アプリのライフサイクル (`IAppLifecycle` / `AppLifecycle` / `IAppSuspendHandler`) : 中断・復帰・終了の通知、中断時の自動保存 (`SuspendTriggers` で選択)、フォーカス喪失時のポーズ・消音 (既定オフ)
+- 画面遷移 (`IScreenService` / `Screens` / `IScreen` / `UiNavigation`) : 全画面 UI の履歴管理 (Push / Back / Replace / BackTo / BackToRoot)、Cancel 入力で戻る (`AbubuUiSettings.BackOnCancel`、Input System 導入時)
+- ポップアップ・画面の共通機能 : 開閉アニメーション (`IUiTransition`)、ゲームパッド用の初期選択 (`UiInitialSelection`)、生成方法の差し替え (`IUiFactory`)、`BackdropPrefab`、`PopupCanvasPrefab` / `ScreenCanvasPrefab`、`MatchWidthOrHeight`、`IPopupService.Close` / `Popups.Close`
+- 機能ごとの Installer (`Abubu.Installers.SaveInstaller` など) と、`AbubuSettings.Modules` による機能ごとの有効・無効、任意モジュールの自動インストールの除外 (`ExcludedModules`)
+- `AbubuSettings.Ui` / `AbubuSettings.ModuleSettings` : UI・任意モジュールの設定アセットを AbubuSettings から渡せる (未設定なら従来どおり Resources)
+- `AbubuSettings.Integration.ResumePauseOnSceneChange` : シーン遷移時のポーズ解除を止められる
+- `IBootService.State` / `Failures`、`IBootTask.IsCritical` (失敗すると Ready にならず `WaitReadyAsync` が `BootFailedException` を投げる)、`ABUBU_DISABLE_AUTO_BOOTSTRAP`
+- `ISceneTransitionHook` (遷移前後の非同期フック)、`SceneSettings.FadePrefab`。FadeTransition は最初のフェードまで生成しない
+- `ITimeScaleController` (timeScale の書き換え方の差し替え)。ポーズ中に他の処理が timeScale を変えた場合は、再開時にその値を優先する
+- `IPoolService.Configure` / `ReturnAll(Scene)` / `Clear` / `GetStats` / `ReturnAfter(…, ignoreTimeScale)`、`EffectLibrary` の Includes、`EffectEntry.MaxPooled`、`EffectSettings.DefaultLifetime`
+- `SoundSettings.SourceTemplates` (カテゴリごとの AudioSource プレハブ)・ミキサーのグループ名の設定・`MixerMinDecibel`・`VolumeSave`
+- View のインターフェイス (`IVolumeSettingsView` / `IGraphicsSettingsView` / `ISceneLoadingView`) と `IGraphicsSettingsLabels`
+- 依存パッケージのアセンブリによる判定 (Asset Store 等で導入済みなら重複して入れない)、`Check Dependencies...` / `Ask On Startup` メニュー、「今後表示しない」
+- ビルド時の `link.xml` の生成 (`AbubuLinkXmlGenerator`)
+- `AbubuMessagePipe.SetGlobalProvider`。自前の `BindMessagePipe` があればそれを使い回す
+- サンプルの生成物を `Generated` フォルダにまとめ、サンプル専用ライブラリを Includes で参照する形に変更。`Tools > Abubu > Remove Sample Registration`
+- `ABUBU_DISABLE_INPUT_MODULE` / `ABUBU_DEBUG_OVERLAY_IN_RELEASE`
+- `Validate Setup` : 保存先フォルダ名が `Save` のときに衝突の可能性を知らせる
 - ボイスカテゴリ (`SoundCategory.Voice` / `IVoicePlayer` / `ISoundService.Voice` / `Sound.PlayVoice`)。SoundLibrary に Voice 欄、音量 (`AudioVolumeModel.Voice`)・ミキサー (`VoiceVolume` / `Voice` グループ)・ポーズ (`PauseVoice`)・音量設定 UI のスライダーに対応。ボイスは 1 本ずつ再生され、新しいボイスが前のボイスを置き換える
 - BGM ダッキング : ボイス再生中は BGM を下げる (`SoundSettings > Ducking`)
 - `SoundEntry.Priority` : SE の同時発音数が上限のとき、優先度の低い音から止める
@@ -21,11 +53,21 @@
 - `DebugOverlay` のキー切り替えが新 Input System のみのプロジェクトでも動作
 
 ### Changed
+- Abubu.Audio が uPools に依存しないように変更
+- プールで親を指定せずに借りたオブジェクトをアクティブなシーンに置くように変更 (以前は DontDestroyOnLoad)
+- `BootPlayModeHook` が他の拡張の `playModeStartScene` を上書きしないように変更
+- AbubuInstaller は主要なサービスがすでにバインドされていれば登録しない (自前の実装を先にバインドして差し替えられる)
+- ポップアップをシーン切り替え時に閉じる条件を「アクティブシーンの変更」から「開いたときのシーンの破棄」に変更 (加算ロードでの SetActiveScene では閉じない)
+- ポップアップを外から Destroy したとき、Backdrop・ポーズ・Count をその場で更新するように変更
 - ポップアップのプレハブを DI コンテナ経由で生成するように変更 (ポップアップのコンポーネントで `[Inject]` が使える)
 - static ショートカット (`Sound` / `GameInput` など) が取得したサービスをキャッシュし、呼び出しごとにコンテナを引かないように変更
 - プールの `IPoolCallbackReceiver` をインスタンス生成時に 1 回だけ集めるように変更 (Rent / Return ごとの GC Alloc を削減)。生成後に追加したコンポーネントには通知されない
 
 ### Fixed
+- ポップアップの OnClosing 内で Pop を呼ぶと無限再帰になる問題 (スタックから外してから閉じるように変更)
+- ポップアップの OnClosing で例外が出ると、そのポップアップが閉じられなくなる問題
+- ポップアップの生成に失敗すると Backdrop だけが残り、画面全体が操作できなくなる問題
+- `Generate Keys` でキーに改行などの制御文字が含まれると、生成したファイルがコンパイルエラーになる問題
 - `EffectLibrary` が `EffectService.cs` 内にあり Missing Script になる問題 (専用ファイルに分離)
 - `ISePlayer.PlayAsync` がポーズ中も待ち時間が進む問題
 - AudioMixer の Exposed Parameter 未設定の警告が音量変更のたびに出る問題 (パラメータごとに 1 回)

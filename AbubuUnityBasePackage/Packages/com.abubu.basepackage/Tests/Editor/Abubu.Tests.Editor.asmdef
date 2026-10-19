@@ -11,6 +11,16 @@
         "Abubu.Editor",
         "Abubu.Scene",
         "Abubu.Events",
+        "Abubu.Logging",
+        "Abubu.Localization",
+        "Abubu.App",
+        "Abubu.Installer",
+        "Abubu.Boot",
+        "Abubu.Core",
+        "UniTask",
+        "Abubu.Graphics",
+        "Abubu.Presentation",
+        "Zenject",
         "R3.Unity"
     ],
     "includePlatforms": [
@@ -21,7 +31,8 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "nunit.framework.dll",
-        "R3.dll"
+        "R3.dll",
+        "Zenject-usage.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

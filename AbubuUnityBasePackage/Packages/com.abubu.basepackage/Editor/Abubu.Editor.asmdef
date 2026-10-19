@@ -10,6 +10,7 @@
         "Abubu.Effects",
         "Abubu.Boot",
         "Abubu.Presentation",
+        "Abubu.Localization",
         "Zenject",
         "UnityEngine.UI"
     ],
