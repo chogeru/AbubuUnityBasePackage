@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Abubu.Input;
+using Abubu.Inputs;
 using Abubu.UI;
 using R3;
 using UnityEngine.Scripting;
@@ -78,8 +78,8 @@ namespace Abubu.UI
             container.Bind<IUiBackBlocker>().To<BuiltInUiBackBlocker>().AsSingle();
             // ゲームパッドが抜けたときの「コントローラーを接続してください」(表示中は戻るで閉じない)
             container.BindInterfacesTo<GamepadReconnectBridge>().AsSingle().NonLazy();
-            // 一番手前の UI の操作の案内を、ボタン案内バー (Abubu.Input.UI) に渡す
-            container.Bind<Abubu.Input.UI.IButtonPromptSource>().To<UiPromptButtonSource>().AsSingle().IfNotBound();
+            // 一番手前の UI の操作の案内を、ボタン案内バー (Abubu.Inputs.UI) に渡す
+            container.Bind<Abubu.Inputs.UI.IButtonPromptSource>().To<UiPromptButtonSource>().AsSingle().IfNotBound();
         }
     }
 }

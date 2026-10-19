@@ -15,43 +15,81 @@ namespace Abubu.Effects
         [Min(0f)] public float Lifetime;
         [Tooltip("起動時にあらかじめ生成しておく数")]
         [Min(0)] public int Prewarm;
+        [Tooltip("プールに残しておく数の上限。超えた分は返却時に破棄する。0 なら上限なし")]
+        [Min(0)] public int MaxPooled;
     }
 
+    /// <summary>
+    /// キー → エフェクト定義の表。includes に他のライブラリを並べると、その中身も同じキー空間で検索できる
+    /// (サンプルや機能ごとにライブラリを分けたいとき用。自分のエントリが優先され、同じキーは先に見つかったものが使われる)。
+    /// </summary>
     [CreateAssetMenu(menuName = "Abubu/Effect Library", fileName = "EffectLibrary")]
     public sealed class EffectLibrary : ScriptableObject
     {
         [SerializeField] private List<EffectEntry> effects = new();
 
-        private Dictionary<string, EffectEntry> _cache;
+        [Tooltip("一緒に検索する他のライブラリ (自分のエントリが優先)")]
+        [SerializeField] private List<EffectLibrary> includes = new();
 
+        /// <summary>
+        /// どれかのライブラリが変更されるたびに進む番号。
+        /// includes 先の編集も検知できるよう、全ライブラリ共通の番号とキャッシュ作成時の番号を比べる
+        /// </summary>
+        private static int s_version;
+
+        private Dictionary<string, EffectEntry> _cache;
+        private int _cacheVersion = -1;
+
+        /// <summary>このライブラリ自身のエントリ (includes 先は含まない)</summary>
         public IReadOnlyList<EffectEntry> Effects => effects;
 
-        /// <summary>登録されているキー。タイポ時の候補表示やキー定数の生成に使う</summary>
-        public IEnumerable<string> Keys
-        {
-            get
-            {
-                _cache ??= BuildCache();
-                return _cache.Keys;
-            }
-        }
+        /// <summary>一緒に検索する他のライブラリ</summary>
+        public IReadOnlyList<EffectLibrary> Includes => includes;
+
+        /// <summary>登録されているキー (includes 先を含む)。タイポ時の候補表示やキー定数の生成に使う</summary>
+        public IEnumerable<string> Keys => GetCache().Keys;
+
+        /// <summary>includes 先を含むすべてのエントリ (Prewarm などの一括処理用)</summary>
+        public IEnumerable<EffectEntry> AllEffects => GetCache().Values;
 
         public bool TryGet(string key, out EffectEntry entry)
         {
-            _cache ??= BuildCache();
-            return _cache.TryGetValue(key, out entry);
+            if (key == null)
+            {
+                entry = null;
+                return false;
+            }
+            return GetCache().TryGetValue(key, out entry);
         }
 
-        private Dictionary<string, EffectEntry> BuildCache()
+        /// <summary>検索用キャッシュを捨てる。実行時にスクリプトからエントリや includes を書き換えた場合に呼ぶ</summary>
+        public void ClearCache() => s_version++;
+
+        private Dictionary<string, EffectEntry> GetCache()
         {
-            var cache = new Dictionary<string, EffectEntry>();
-            foreach (var e in effects)
+            if (_cache == null || _cacheVersion != s_version)
+            {
+                _cache = new Dictionary<string, EffectEntry>();
+                Collect(this, _cache, new HashSet<EffectLibrary>());
+                _cacheVersion = s_version;
+            }
+            return _cache;
+        }
+
+        /// <summary>自分 → includes の順に集める。循環参照は visited で止める</summary>
+        private static void Collect(EffectLibrary library, Dictionary<string, EffectEntry> cache, HashSet<EffectLibrary> visited)
+        {
+            if (library == null || !visited.Add(library)) return;
+            foreach (var e in library.effects)
             {
                 if (e != null && !string.IsNullOrEmpty(e.Key)) cache.TryAdd(e.Key, e);
             }
-            return cache;
+            foreach (var include in library.includes) Collect(include, cache, visited);
         }
 
-        private void OnValidate() => _cache = null;
+        // Domain Reload 無効時や includes 先の編集に備えて、有効化時・編集時にキャッシュを捨てる
+        private void OnEnable() => s_version++;
+
+        private void OnValidate() => s_version++;
     }
 }

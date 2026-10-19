@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace Abubu.Localization
 {
     /// <summary>
-    /// Image / SpriteRenderer に付けると、Key に対応する言語ごとの Sprite (LocalizationTable の Assets) を表示する。
+    /// Image / SpriteRenderer に付けると、Key に対応する言語ごとの Sprite (AbubuLocalizationTable の Assets) を表示する。
     /// 文字入りのロゴやボタン画像の差し替えに使う。
     /// </summary>
     [DisallowMultipleComponent]

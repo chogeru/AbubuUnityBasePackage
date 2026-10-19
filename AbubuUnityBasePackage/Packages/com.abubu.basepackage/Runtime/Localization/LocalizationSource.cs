@@ -50,7 +50,7 @@ namespace Abubu.Localization
     }
 
     /// <summary>
-    /// 「ILocalizationSource は既定の LocalizationTable のもの」という目印。
+    /// 「ILocalizationSource は既定の AbubuLocalizationTable のもの」という目印。
     /// 任意モジュール (Unity Localization 連携など) は、これがバインドされているときだけ取得元を差し替える (利用者が自前でバインドしたものは差し替えない)
     /// </summary>
     public sealed class DefaultLocalizationSourceMarker
@@ -67,7 +67,7 @@ namespace Abubu.Localization
 
         public IReadOnlyList<string> Languages { get; }
 
-        public TableLocalizationSource(LocalizationTable table)
+        public TableLocalizationSource(AbubuLocalizationTable table)
         {
             if (table == null)
             {

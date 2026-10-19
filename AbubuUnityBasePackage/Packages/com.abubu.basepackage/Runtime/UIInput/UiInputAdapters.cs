@@ -1,5 +1,5 @@
 using Abubu.Debugging;
-using Abubu.Input;
+using Abubu.Inputs;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;

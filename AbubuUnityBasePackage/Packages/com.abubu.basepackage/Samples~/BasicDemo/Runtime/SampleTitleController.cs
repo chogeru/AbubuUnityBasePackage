@@ -16,6 +16,8 @@ namespace Abubu.Samples
         [SerializeField] private Text status;
         [SerializeField] private GameObject volumePanel;
         [SerializeField] private GameObject graphicsPanel;
+        [Tooltip("Build Settings 未登録でもエディタで遷移できるよう、ゲームシーンのパスを保持する (サンプル生成時に設定される)")]
+        [SerializeField] private string gameScenePath;
 
         private void Start()
         {
@@ -52,7 +54,7 @@ namespace Abubu.Samples
         public void ToggleVolumePanel() => Toggle(volumePanel);
         public void ToggleGraphicsPanel() => Toggle(graphicsPanel);
 
-        public void GoToGame() => Scenes.LoadWith(SampleGameController.SceneName, new SampleGamePayload
+        public void GoToGame() => Scenes.LoadWith(SampleScenes.Resolve(SampleGameController.SceneName, gameScenePath), new SampleGamePayload
         {
             Message = "Title から渡されたデータです",
             StartedAt = DateTime.Now.ToString("HH:mm:ss"),

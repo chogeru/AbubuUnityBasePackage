@@ -1,119 +1,224 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Abubu.Save;
 using R3;
 using UnityEngine;
-using Zenject;
 
-namespace Abubu.Graphics
+namespace Abubu.DisplaySettings
 {
-    [Serializable]
-    public sealed class GraphicsSettingsData
-    {
-        public int Width;
-        public int Height;
-        public FullScreenMode FullScreenMode = FullScreenMode.FullScreenWindow;
-        public int QualityLevel = -1;
-        public bool VSync = true;
-        /// <summary>-1 = プラットフォーム既定</summary>
-        public int TargetFrameRate = -1;
-    }
-
     /// <summary>
-    /// 解像度・フルスクリーン・画質・VSync・目標フレームレートの Model。
-    /// 値を変えると即座に反映され、ISaveService に保存される。
+    /// 解像度・表示モード・画質・VSync・目標フレームレートの Model (状態のみ)。
+    /// Unity への反映は <see cref="GraphicsSettingsApplier"/>、保存は <see cref="GraphicsSettingsStore"/> が担当する。
     /// </summary>
-    public sealed class GraphicsSettingsModel : IInitializable, IDisposable
+    /// <remarks>
+    /// <para>
+    /// 初期値は実行環境の現在値 (<see cref="GraphicsPlatformInfo"/>) で、この時点では「未設定」扱い。
+    /// Set* で変更されるか、保存データから <see cref="Restore"/> された項目だけが「明示的に設定済み」になり、
+    /// Applier はその項目だけを Unity に反映する (プロジェクト側の設定を勝手に上書きしない)。
+    /// </para>
+    /// <para>
+    /// 各選択肢 (*Options) には現在値が必ず含まれる。選択肢に無い値が設定されると、その値を追加した新しいリストに差し替わる
+    /// (参照が変わるので、View 側は参照比較で選択肢の作り直しを判定できる)。
+    /// </para>
+    /// </remarks>
+    public sealed class GraphicsSettingsModel : IDisposable
     {
-        public const string SaveKey = "abubu.graphics";
+        private readonly ReactiveProperty<Vector2Int> _resolution;
+        private readonly ReactiveProperty<FullScreenMode> _fullScreenMode;
+        private readonly ReactiveProperty<int> _qualityLevel;
+        private readonly ReactiveProperty<bool> _vSync;
+        private readonly ReactiveProperty<int> _targetFrameRate;
+        private readonly Subject<GraphicsSettingKind> _changed = new();
+        private readonly Subject<Unit> _saveRequested = new();
+        private int _explicitMask;
 
-        /// <summary>目標フレームレートの選択肢 (-1 = 無制限 / 既定)</summary>
-        public static readonly int[] FrameRateOptions = { 30, 60, 120, 144, -1 };
-
-        public IReadOnlyList<Vector2Int> Resolutions { get; }
-        public IReadOnlyList<string> QualityNames { get; } = QualitySettings.names;
-
-        /// <summary>WebGL / モバイルは解像度・ウィンドウモードを変更できない</summary>
-        public bool SupportsResolution { get; } = !Application.isMobilePlatform && Application.platform != RuntimePlatform.WebGLPlayer;
-
-        public ReactiveProperty<Vector2Int> Resolution { get; }
-        public ReactiveProperty<FullScreenMode> FullScreenMode { get; }
-        public ReactiveProperty<int> QualityLevel { get; }
-        public ReactiveProperty<bool> VSync { get; }
-        public ReactiveProperty<int> TargetFrameRate { get; }
-
-        private readonly ISaveService _save;
-        private readonly CompositeDisposable _disposables = new();
-
-        public GraphicsSettingsModel(ISaveService save)
+        /// <param name="options">選択肢などの構成。null なら既定値</param>
+        /// <param name="platform">実行環境の情報。null なら <see cref="GraphicsPlatformInfo.Capture"/> の結果を使う</param>
+        public GraphicsSettingsModel(GraphicsSettingsOptions options = null, GraphicsPlatformInfo platform = null)
         {
-            _save = save;
+            Options = options ?? new GraphicsSettingsOptions();
+            platform ??= GraphicsPlatformInfo.Capture();
 
-            Resolutions = Screen.resolutions
-                .Select(r => new Vector2Int(r.width, r.height))
-                .Append(new Vector2Int(Screen.width, Screen.height))
-                .Distinct()
-                .OrderBy(r => r.x * r.y)
-                .ToArray();
+            SupportsResolution = platform.SupportsResolution;
+            QualityNames = platform.QualityNames ?? Array.Empty<string>();
 
-            var data = save.Load(SaveKey, new GraphicsSettingsData());
-            if (data.Width <= 0 || data.Height <= 0)
-            {
-                data.Width = Screen.width;
-                data.Height = Screen.height;
-                data.FullScreenMode = Screen.fullScreenMode;
-            }
-            if (data.QualityLevel < 0 || data.QualityLevel >= QualityNames.Count) data.QualityLevel = QualitySettings.GetQualityLevel();
+            ResolutionOptions = (platform.Resolutions ?? Array.Empty<Vector2Int>()).Where(IsValidResolution).Distinct().ToArray();
+            WindowModeOptions = (Options.WindowModes ?? new List<FullScreenMode>()).Where(IsDefinedMode).Distinct().ToArray();
+            FrameRateOptions = (Options.FrameRateOptions ?? new List<int>()).Where(IsValidFrameRate).Distinct().ToArray();
 
-            Resolution = new ReactiveProperty<Vector2Int>(new Vector2Int(data.Width, data.Height));
-            FullScreenMode = new ReactiveProperty<FullScreenMode>(data.FullScreenMode);
-            QualityLevel = new ReactiveProperty<int>(data.QualityLevel);
-            VSync = new ReactiveProperty<bool>(data.VSync);
-            TargetFrameRate = new ReactiveProperty<int>(data.TargetFrameRate);
+            var quality = platform.CurrentQualityLevel;
+            if (quality < 0 || quality >= QualityNames.Count) quality = 0;
+            var frameRate = IsValidFrameRate(platform.CurrentTargetFrameRate) ? platform.CurrentTargetFrameRate : -1;
+
+            _resolution = new ReactiveProperty<Vector2Int>(platform.CurrentResolution);
+            _fullScreenMode = new ReactiveProperty<FullScreenMode>(platform.CurrentFullScreenMode);
+            _qualityLevel = new ReactiveProperty<int>(quality);
+            _vSync = new ReactiveProperty<bool>(platform.CurrentVSync);
+            _targetFrameRate = new ReactiveProperty<int>(frameRate);
+
+            // 現在値が選択肢に無ければ追加しておく (ドロップダウンの表示と値がずれないように)
+            if (SupportsResolution && IsValidResolution(platform.CurrentResolution)) EnsureResolutionOption(platform.CurrentResolution);
+            if (SupportsResolution && IsDefinedMode(platform.CurrentFullScreenMode)) EnsureWindowModeOption(platform.CurrentFullScreenMode);
+            EnsureFrameRateOption(frameRate);
         }
 
-        public void Initialize()
+        /// <summary>この Model の構成</summary>
+        public GraphicsSettingsOptions Options { get; }
+
+        /// <summary>解像度・表示モードを変更できるか (WebGL / モバイルは不可)</summary>
+        public bool SupportsResolution { get; }
+
+        /// <summary>解像度の選択肢 (面積の小さい順)。現在値を必ず含む</summary>
+        public IReadOnlyList<Vector2Int> ResolutionOptions { get; private set; }
+
+        /// <summary>表示モードの選択肢。現在値を必ず含む</summary>
+        public IReadOnlyList<FullScreenMode> WindowModeOptions { get; private set; }
+
+        /// <summary>画質レベルの名前。インデックスがそのまま画質レベル</summary>
+        public IReadOnlyList<string> QualityNames { get; }
+
+        /// <summary>目標フレームレートの選択肢 (-1 = プラットフォーム既定)。現在値を必ず含む</summary>
+        public IReadOnlyList<int> FrameRateOptions { get; private set; }
+
+        public ReadOnlyReactiveProperty<Vector2Int> Resolution => _resolution;
+        public ReadOnlyReactiveProperty<FullScreenMode> FullScreenMode => _fullScreenMode;
+        public ReadOnlyReactiveProperty<int> QualityLevel => _qualityLevel;
+        public ReadOnlyReactiveProperty<bool> VSync => _vSync;
+        public ReadOnlyReactiveProperty<int> TargetFrameRate => _targetFrameRate;
+
+        /// <summary>
+        /// 項目が明示的に設定された (Set* / <see cref="Restore"/>) ときに、その項目を通知する。
+        /// 同じ値の再設定でも、未設定 → 設定済みに変わった場合は通知する。
+        /// </summary>
+        public Observable<GraphicsSettingKind> Changed => _changed;
+
+        /// <summary><see cref="RequestSave"/> が呼ばれたことの通知。保存担当 (<see cref="GraphicsSettingsStore"/>) が購読する</summary>
+        public Observable<Unit> SaveRequested => _saveRequested;
+
+        /// <summary>項目が明示的に設定済みか (未設定なら Unity には反映されない)</summary>
+        public bool IsExplicit(GraphicsSettingKind kind) => (_explicitMask & Bit(kind)) != 0;
+
+        /// <summary>解像度を設定する。変更できない環境や 0 以下のサイズなら false</summary>
+        public bool SetResolution(Vector2Int resolution)
         {
-            if (SupportsResolution)
-            {
-                Resolution.CombineLatest(FullScreenMode, static (r, m) => (r, m))
-                    .Subscribe(static x => Screen.SetResolution(x.r.x, x.r.y, x.m))
-                    .AddTo(_disposables);
-            }
-
-            QualityLevel.Subscribe(static q => QualitySettings.SetQualityLevel(q, true)).AddTo(_disposables);
-            // 画質レベルの切り替えで vSyncCount が上書きされるため、画質と合わせて再適用する
-            VSync.CombineLatest(QualityLevel, static (v, _) => v)
-                .Subscribe(static v => QualitySettings.vSyncCount = v ? 1 : 0)
-                .AddTo(_disposables);
-            TargetFrameRate.Subscribe(static f => Application.targetFrameRate = f).AddTo(_disposables);
-
-            Observable.Merge(Resolution.Skip(1).AsUnitObservable(), FullScreenMode.Skip(1).AsUnitObservable(),
-                    QualityLevel.Skip(1).AsUnitObservable(), VSync.Skip(1).AsUnitObservable(), TargetFrameRate.Skip(1).AsUnitObservable())
-                .Debounce(TimeSpan.FromSeconds(0.5))
-                .Subscribe(this, static (_, self) => self.Save())
-                .AddTo(_disposables);
+            if (!SupportsResolution || !IsValidResolution(resolution)) return false;
+            EnsureResolutionOption(resolution);
+            Commit(GraphicsSettingKind.Resolution, _resolution, resolution);
+            return true;
         }
 
-        public void Save() => _save.Save(SaveKey, new GraphicsSettingsData
+        /// <summary>表示モードを設定する。変更できない環境や未定義の値なら false</summary>
+        public bool SetFullScreenMode(FullScreenMode mode)
         {
-            Width = Resolution.Value.x,
-            Height = Resolution.Value.y,
-            FullScreenMode = FullScreenMode.Value,
-            QualityLevel = QualityLevel.Value,
-            VSync = VSync.Value,
-            TargetFrameRate = TargetFrameRate.Value,
-        });
+            if (!SupportsResolution || !IsDefinedMode(mode)) return false;
+            EnsureWindowModeOption(mode);
+            Commit(GraphicsSettingKind.FullScreenMode, _fullScreenMode, mode);
+            return true;
+        }
+
+        /// <summary>画質レベルを設定する。範囲外なら false</summary>
+        public bool SetQualityLevel(int level)
+        {
+            if (level < 0 || level >= QualityNames.Count) return false;
+            Commit(GraphicsSettingKind.QualityLevel, _qualityLevel, level);
+            return true;
+        }
+
+        /// <summary>VSync を設定する</summary>
+        public bool SetVSync(bool enabled)
+        {
+            Commit(GraphicsSettingKind.VSync, _vSync, enabled);
+            return true;
+        }
+
+        /// <summary>目標フレームレートを設定する。-1 (既定) か 1 以上でなければ false</summary>
+        public bool SetTargetFrameRate(int frameRate)
+        {
+            if (!IsValidFrameRate(frameRate)) return false;
+            EnsureFrameRateOption(frameRate);
+            Commit(GraphicsSettingKind.TargetFrameRate, _targetFrameRate, frameRate);
+            return true;
+        }
+
+        /// <summary>
+        /// 保存データから、記録されている項目だけを復元する。不正な値の項目は無視する (未設定のまま)。
+        /// </summary>
+        public void Restore(GraphicsSettingsData data)
+        {
+            if (data == null) return;
+            if (data.Has(GraphicsSettingKind.Resolution)) SetResolution(new Vector2Int(data.Width, data.Height));
+            if (data.Has(GraphicsSettingKind.FullScreenMode)) SetFullScreenMode(data.FullScreenMode);
+            if (data.Has(GraphicsSettingKind.QualityLevel)) SetQualityLevel(data.QualityLevel);
+            if (data.Has(GraphicsSettingKind.VSync)) SetVSync(data.VSync);
+            if (data.Has(GraphicsSettingKind.TargetFrameRate)) SetTargetFrameRate(data.TargetFrameRate);
+        }
+
+        /// <summary>現在の状態を保存形式にする (明示的に設定された項目のマスク付き)</summary>
+        public GraphicsSettingsData ToData() => new()
+        {
+            Width = _resolution.Value.x,
+            Height = _resolution.Value.y,
+            FullScreenMode = _fullScreenMode.Value,
+            QualityLevel = _qualityLevel.Value,
+            VSync = _vSync.Value,
+            TargetFrameRate = _targetFrameRate.Value,
+            ExplicitMask = _explicitMask,
+        };
+
+        /// <summary>
+        /// すぐに保存してほしいことを通知する (中断時など)。Model 自体は保存しない。
+        /// 保存担当が登録されていなければ何も起きない。
+        /// </summary>
+        public void RequestSave() => _saveRequested.OnNext(Unit.Default);
+
+        /// <summary>旧 API。<see cref="RequestSave"/> と同じ</summary>
+        [Obsolete("GraphicsSettingsModel は保存しなくなりました。RequestSave() か GraphicsSettingsStore.Save() を使ってください。")]
+        public void Save() => RequestSave();
 
         public void Dispose()
         {
-            _disposables.Dispose();
-            Resolution.Dispose();
-            FullScreenMode.Dispose();
-            QualityLevel.Dispose();
-            VSync.Dispose();
-            TargetFrameRate.Dispose();
+            _changed.Dispose();
+            _saveRequested.Dispose();
+            _resolution.Dispose();
+            _fullScreenMode.Dispose();
+            _qualityLevel.Dispose();
+            _vSync.Dispose();
+            _targetFrameRate.Dispose();
         }
+
+        private void Commit<T>(GraphicsSettingKind kind, ReactiveProperty<T> property, T value)
+        {
+            var wasExplicit = IsExplicit(kind);
+            var changed = !EqualityComparer<T>.Default.Equals(property.Value, value);
+            _explicitMask |= Bit(kind);
+            property.Value = value;
+            if (changed || !wasExplicit) _changed.OnNext(kind);
+        }
+
+        private void EnsureResolutionOption(Vector2Int value)
+        {
+            if (ResolutionOptions.Contains(value)) return;
+            ResolutionOptions = ResolutionOptions.Append(value).OrderBy(r => r.x * r.y).ThenBy(r => r.x).ToArray();
+        }
+
+        private void EnsureWindowModeOption(FullScreenMode value)
+        {
+            if (WindowModeOptions.Contains(value)) return;
+            WindowModeOptions = WindowModeOptions.Append(value).ToArray();
+        }
+
+        private void EnsureFrameRateOption(int value)
+        {
+            if (FrameRateOptions.Contains(value)) return;
+            // -1 (既定) は末尾、それ以外は昇順の位置に入れる
+            FrameRateOptions = FrameRateOptions.Append(value)
+                .OrderBy(f => f < 0 ? int.MaxValue : f)
+                .ToArray();
+        }
+
+        private static int Bit(GraphicsSettingKind kind) => 1 << (int)kind;
+        private static bool IsValidResolution(Vector2Int r) => r.x > 0 && r.y > 0;
+        private static bool IsDefinedMode(FullScreenMode mode) => Enum.IsDefined(typeof(FullScreenMode), mode);
+        private static bool IsValidFrameRate(int f) => f == -1 || f > 0;
     }
 }

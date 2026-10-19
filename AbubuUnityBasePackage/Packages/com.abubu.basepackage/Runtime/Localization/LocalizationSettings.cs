@@ -16,10 +16,10 @@ namespace Abubu.Localization
     }
 
     [Serializable]
-    public sealed class LocalizationSettings
+    public sealed class AbubuLocalizationSettings
     {
         [Tooltip("翻訳テーブル。ILocalizationSource を自前でバインドした場合は使われない")]
-        public LocalizationTable Table;
+        public AbubuLocalizationTable Table;
 
         [Tooltip("初回起動時の言語。空なら端末の言語 (テーブルに無ければ Fallback Language)")]
         public string StartupLanguage = "";

@@ -38,7 +38,7 @@ https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/
 バージョンを固定したいときは、URL の末尾にタグを付けます（変更履歴は `CHANGELOG.md`）。
 
 ```
-https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/Packages/com.abubu.basepackage#v0.2.0
+https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/Packages/com.abubu.basepackage#v0.3.0
 ```
 
 ### 2. 依存パッケージを入れる
@@ -64,7 +64,7 @@ https://github.com/chogeru/AbubuUnityBasePackage.git?path=AbubuUnityBasePackage/
 - `Assets/Abubu/AbubuSettings.asset` … 全機能の設定
 - `Assets/Abubu/SoundLibrary.asset` … サウンド定義 (キー → AudioClip)
 - `Assets/Abubu/EffectLibrary.asset` … エフェクト定義 (キー → Prefab + SE)
-- `Assets/Abubu/LocalizationTable.asset` … 翻訳テーブル (キー → 各言語の文字列)
+- `Assets/Abubu/AbubuLocalizationTable.asset` … 翻訳テーブル (キー → 各言語の文字列)
 - `Assets/Resources/ProjectContext.prefab` … `AbubuInstaller` 入り (既存の ProjectContext があればそこに追加)
 
 これで完了です。**シーンに SceneContext を置かなくても、どのシーンから再生しても動きます。**
@@ -140,7 +140,7 @@ AbubuLog.Debug("AI", $"target = {target}");   // リリースビルドでは呼�
 
 ### キーの定数化
 
-`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary / LocalizationTable / Build Profiles のシーン一覧から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリやシーン一覧を編集したら再実行してください)。
+`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary / AbubuLocalizationTable / Build Profiles のシーン一覧から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリやシーン一覧を編集したら再実行してください)。
 
 - 出力先・名前空間・asmdef の生成 (asmdef で分割したプロジェクトから参照するため)・Packages 以下も探すかは `Edit > Project Settings > Abubu` で設定します。設定は `ProjectSettings/AbubuEditorSettings.asset` に保存されるので、git で共有できます。
 - 別のキーが同じ定数名になる場合 (`menu_start` と `menu.start` など) は、文字列順で最初のキー以外にキーから計算した固定の接尾辞 (`MenuStart_1a2b`) が付きます。関係ないキーを追加しても、既存の定数名は変わりません。
@@ -379,7 +379,7 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 - **デバイスの判別** : `IInputDeviceService` (`GameInput.Devices`) で最後に操作したデバイス (`CurrentDevice`) とゲームパッドの種類 (`CurrentGamepadKind`: Xbox / PlayStation / Switch / Generic) が分かります。スティックのわずかな揺れで表示が切り替わらないよう、しきい値とちらつき防止が入っています。`GameInput.IsUsingGamepad` / `GameInput.CurrentGamepadKind` でも取れます。
 - **ボタンのアイコン** : `InputGlyphs` (デバイス・ゲームパッドの種類ごとのアイコン表) を用意し、`InputGlyphImage` を Image に付けると、操作中のデバイスに合わせたボタンのアイコンを表示します。コードからは `GameInput.GetGlyph`。
 - **振動** : `IHapticsService` (`GameInput.Haptics` / `GameInput.Rumble` / `GameInput.StopRumble`) で Light / Medium / Heavy などのプリセットを鳴らせます。全体の強さとオン・オフは保存され、ポーズ中・フォーカスが外れている間は止まります。
-- **キー割り当て画面** : `Abubu.Input.UI` の `RebindView` / `RebindPresenter` (View は `IRebindView` で差し替え可) で、キー・ボタンの割り当て画面を作れます。重複したときの扱い (Allow / Swap / Reject)、複合入力 (WASD など) に対応しています。ローカライズが有効なら、文言は翻訳テーブルの `abubu.rebind.*` と `abubu.input.action.*` (例: `abubu.input.action.jump`) から取ります (`AbubuBuiltInStrings.csv` に英語・日本語あり)。
+- **キー割り当て画面** : `Abubu.Inputs.UI` の `RebindView` / `RebindPresenter` (View は `IRebindView` で差し替え可) で、キー・ボタンの割り当て画面を作れます。重複したときの扱い (Allow / Swap / Reject)、複合入力 (WASD など) に対応しています。ローカライズが有効なら、文言は翻訳テーブルの `abubu.rebind.*` と `abubu.input.action.*` (例: `abubu.input.action.jump`) から取ります (`AbubuBuiltInStrings.csv` に英語・日本語あり)。
 - `InputCursorAutoHide` (既定オフ) で、ゲームパッド操作中にマウスカーソルを隠せます。
 - **ゲームパッドの抜き差し** : `PauseOnGamepadDisconnect` (既定オン) で、操作中のゲームパッドが抜けるとポーズし、「コントローラーを接続してください」のダイアログを出します (UI モジュールがあるとき。接続し直すと閉じ、「キーボードで続ける」で待つのをやめる。表示中は B / Esc では閉じない)。文言は `abubu.input.reconnect.*`。抜き差しは `IInputDeviceService.DeviceLost` / `DeviceRegained` でも分かります。
 - **ボタン案内** : `UiButtonPromptBar` を置くと、一番手前のポップアップ・画面の `IUiPromptProvider` の案内を、操作中のデバイスのアイコン付きで表示します。`InputPromptLabel` / `InputGlyphText.Format("Press {Player/Jump}")` で文中にアイコンを入れられます。キー割り当て画面は `GameObject > Abubu > Rebind Panel` で作れます。
@@ -449,8 +449,8 @@ _screens.BackToRoot();
 
 ### ローカライズ
 
-- `AbubuSettings > Localization > Table` の `LocalizationTable` に翻訳を登録します。`Languages` に言語コード (`ja`, `en`, `zh-Hans` など) を並べ、`Entries` の `Values` を同じ順に書きます。
-- 量が多い場合は CSV / TSV (UTF-8) を `Csv Sources` に入れます。Google スプレッドシートの書き出しをそのまま使えます。`Tools > Abubu > Localization > Export CSV / Export TSV / Import CSV or TSV` (または LocalizationTable の右クリックメニュー) で、テーブルとスプレッドシートを行き来できます。
+- `AbubuSettings > Localization > Table` の `AbubuLocalizationTable` に翻訳を登録します。`Languages` に言語コード (`ja`, `en`, `zh-Hans` など) を並べ、`Entries` の `Values` を同じ順に書きます。
+- 量が多い場合は CSV / TSV (UTF-8) を `Csv Sources` に入れます。Google スプレッドシートの書き出しをそのまま使えます。`Tools > Abubu > Localization > Export CSV / Export TSV / Import CSV or TSV` (または AbubuLocalizationTable の右クリックメニュー) で、テーブルとスプレッドシートを行き来できます。
 
 ```csv
 key,ja,en
@@ -477,7 +477,7 @@ item.count.other,{count} 個,{count} items
 **フォント・アセット**
 
 - `Create > Abubu > Localization Fonts` で作った `LocalizationFontSettings` に言語ごとのフォント (TextMeshPro / UI.Text) を登録し、`AbubuSettings > Module Settings` に入れると、`Localized Text` が言語に合わせて切り替えます (日中韓の文字が豆腐にならないように。`*` はほかのすべての言語用)。今のフォントのままにしたい Text は `Keep Font` をオンにします。
-- 文字入りの画像・ボイスなどは LocalizationTable の `Assets` に言語ごとに登録し、`Localized Image` (Image / SpriteRenderer)・`Localized Audio` (AudioSource) を付けるか、`GetAsset<T>(key)` / `LocalizedAsset<T>` で取り出します。
+- 文字入りの画像・ボイスなどは AbubuLocalizationTable の `Assets` に言語ごとに登録し、`Localized Image` (Image / SpriteRenderer)・`Localized Audio` (AudioSource) を付けるか、`GetAsset<T>(key)` / `LocalizedAssetKey<T>` で取り出します。
 - Text / TextMeshPro 以外 (UI Toolkit など) は、`Localized Text` の `On Changed` に処理を登録するか、`ILocalizationService.Changed` を購読してください。
 
 **取得元の差し替え・非同期読み込み**
@@ -551,7 +551,7 @@ Logger.Warning("HP がマイナスです");
 - `AbubuSettings` のライブラリ未設定
 - Boot シーン / 最初のシーンが Build Profiles に入っているか
 - SoundLibrary / EffectLibrary の空キー・重複キー・Clip / Prefab 未設定・存在しない SE キー
-- LocalizationTable の重複キー・未翻訳のキー、`Localized Text` で使われているのにテーブルに無いキー
+- AbubuLocalizationTable の重複キー・未翻訳のキー、`Localized Text` で使われているのにテーブルに無いキー
 - 同名のファイルに無く Missing Script になるクラス
 - セーブの保存先フォルダ名の衝突の可能性
 - Active Input Handling と EventSystem の Input Module の組み合わせ (StandaloneInputModule が Input System のみの設定で使われている)、InputSystemUIInputModule の Actions Asset 未設定・プロジェクト共通の Input Actions (InputSystem.actions) と違う、Input Actions に UI/Navigate・UI/Cancel があるか
@@ -591,7 +591,7 @@ public sealed class MyInstaller : MonoInstaller
     {
         SaveInstaller.Install(Container, saveSettings);
         PauseInstaller.Install(Container, new PauseSettings());
-        LocalizationInstaller.Install(Container, new LocalizationSettings { Table = myTable });
+        LocalizationInstaller.Install(Container, new AbubuLocalizationSettings { Table = myTable });
     }
 }
 ```
@@ -606,7 +606,7 @@ public sealed class MyInstaller : MonoInstaller
 | `Abubu.Localization.UI` | `Localized Text` / `Localized Image` / `Localized Audio` / `Subtitle Text`、言語ごとのフォント |
 | `Abubu.UI.Localization` | ダイアログの文言・フォントの翻訳 |
 | `Abubu.Graphics.UI.Localization` | 画面設定パネルの選択肢の翻訳 |
-| `Abubu.Input.UI.Localization` | キー割り当て画面の文言の翻訳 |
+| `Abubu.Inputs.UI.Localization` | キー割り当て画面の文言の翻訳 |
 | `Abubu.UI.Input` | Cancel で戻る・フォーカスの維持・EventSystem の用意・長押しボタンの入力・ゲームパッドの再接続ダイアログ・ボタン案内バーへの受け渡し |
 
 ## 既存プロジェクトへの導入

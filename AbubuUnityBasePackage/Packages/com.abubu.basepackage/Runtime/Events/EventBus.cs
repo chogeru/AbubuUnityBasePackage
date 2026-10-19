@@ -25,6 +25,7 @@ namespace Abubu.Events
         /// <summary>
         /// <typeparamref name="T"/> 型のメッセージを受け取る Observable を返す。
         /// 購読の解除 (AddTo など) は呼び出し側で行うこと。
+        /// 戻り値は購読専用 (Subject ではない) ので、受け取った側からメッセージを流すことはできない。
         /// </summary>
         Observable<T> Receive<T>();
     }
@@ -60,7 +61,8 @@ namespace Abubu.Events
                 subject = new Subject<T>();
                 _subjects.Add(typeof(T), subject);
             }
-            return (Subject<T>)subject;
+            // Subject そのものを返すと、受け取った側がキャストして OnNext / OnCompleted を呼べてしまうため包む
+            return ((Subject<T>)subject).AsObservable();
         }
 
         /// <summary>

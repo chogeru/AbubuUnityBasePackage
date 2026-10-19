@@ -77,7 +77,7 @@ namespace Abubu.Editor
 
             foreach (var library in FindAssets<SoundLibrary>()) CheckSoundLibrary(library, issues);
             foreach (var library in FindAssets<EffectLibrary>()) CheckEffectLibrary(library, issues);
-            var tables = FindAssets<LocalizationTable>();
+            var tables = FindAssets<AbubuLocalizationTable>();
             foreach (var table in tables) CheckLocalizationTable(table, issues);
             CheckLocalizedTextKeys(tables, issues);
             CheckInputAndEventSystems(issues);
@@ -120,7 +120,7 @@ namespace Abubu.Editor
         /// シーン・プレハブに置かれた LocalizedText のキーのうち、どの翻訳テーブルにも無いものを探す。
         /// アセットを開かずにテキスト (YAML) を読んで調べる (Force Text シリアライズのとき)
         /// </summary>
-        private static void CheckLocalizedTextKeys(List<LocalizationTable> tables, List<Issue> issues)
+        private static void CheckLocalizedTextKeys(List<AbubuLocalizationTable> tables, List<Issue> issues)
         {
             if (tables.Count == 0 || EditorSettings.serializationMode != SerializationMode.ForceText) return;
             var script = FindScript(typeof(LocalizedText));
@@ -408,7 +408,7 @@ namespace Abubu.Editor
             }
         }
 
-        private static void CheckLocalizationTable(LocalizationTable table, List<Issue> issues)
+        private static void CheckLocalizationTable(AbubuLocalizationTable table, List<Issue> issues)
         {
             var name = AssetDatabase.GetAssetPath(table);
             var seen = new HashSet<string>();

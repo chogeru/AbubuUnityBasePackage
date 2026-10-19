@@ -52,6 +52,26 @@ namespace Abubu.Tests
         }
 
         [Test]
+        public void Receive_DoesNotExposeSubject()
+        {
+            using var bus = new EventBus();
+            // Subject のままだと受け取った側がキャストして OnNext / OnCompleted を呼べてしまう
+            Assert.That(bus.Receive<A>(), Is.Not.InstanceOf<Subject<A>>());
+            Assert.That(bus.Receive<A>(), Is.Not.InstanceOf<ISubject<A>>());
+        }
+
+        [Test]
+        public void MultipleReceive_ShareSameStream()
+        {
+            using var bus = new EventBus();
+            var count = 0;
+            using var s1 = bus.Receive<A>().Subscribe(_ => count++);
+            using var s2 = bus.Receive<A>().Subscribe(_ => count++);
+            bus.Publish(new A(1));
+            Assert.That(count, Is.EqualTo(2));
+        }
+
+        [Test]
         public void AfterDispose_PublishAndReceive_AreSafe()
         {
             var bus = new EventBus();

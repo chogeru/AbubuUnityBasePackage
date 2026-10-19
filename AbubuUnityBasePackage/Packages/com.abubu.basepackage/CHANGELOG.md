@@ -3,11 +3,26 @@
 このファイルは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で、
 バージョン番号は [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
-導入側は git URL の末尾に `#v0.2.0` のようにタグを付けると、バージョンを固定できます。
+導入側は git URL の末尾に `#v0.3.0` のようにタグを付けると、バージョンを固定できます。
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
 ### Breaking Changes
+- **名前空間・型名の変更** (Unity / Unity Localization の型と衝突しないようにするため。アセンブリ名は変えていないので `ExcludedModules` などの文字列はそのまま使える。ScriptableObject / MonoBehaviour は .meta の GUID を維持しているので、作成済みのアセットやシーンの参照は切れない)
+
+  | 変更前 | 変更後 |
+  |---|---|
+  | `namespace Abubu.Scene` | `Abubu.SceneFlow` |
+  | `namespace Abubu.Input` / `Abubu.Input.UI` | `Abubu.Inputs` / `Abubu.Inputs.UI` |
+  | `namespace Abubu.Graphics` | `Abubu.DisplaySettings` |
+  | `LocalizationSettings` | `AbubuLocalizationSettings` |
+  | `LocalizationTable` | `AbubuLocalizationTable` |
+  | `LocalizedAsset<T>` | `LocalizedAssetKey<T>` |
+
+  移行は `using Abubu.Scene;` → `using Abubu.SceneFlow;` のように `using` を置き換えるだけで済む (static ショートカット `Sound` / `Scenes` / `GameInput` などの名前は変わらない)
+- 音量を Model (`IAudioVolumeModel`) と保存 (`AudioVolumeStore`) に分割 (`AudioVolumeInstaller` で登録)。画面設定 UI・音量 UI・ロード画面を `Abubu.Graphics.UI` / `Abubu.Audio.UI` / `Abubu.Scene.UI` アセンブリに分離し、`Abubu.Presentation` は MVP の基底 (`PresenterBase` / `ViewBase`) だけになった。`Saves.SaveAsync` / `LoadAsync` は `UniTask` を返す (`Abubu.Save.Reactive`)。`Sound.Preload` → `Sound.PreloadAsync`
 - `IInputService` に `CurrentScheme` / `IsRebinding`、`IInputDeviceService` に `CurrentScheme` / `DeviceLost` / `DeviceRegained` (`Observable<InputDeviceConnection>`) を追加。`IRumbleBackend` / `IHapticsService.SupportsRumble`、`IInputGlyphService.GetCompositeGlyphs` を追加 (実装している場合は対応が必要)。`RebindAsync` は同時に呼ばれると false を返す。`RebindExcludedPaths` の既定に `<Mouse>/scroll` を追加
 - キー割り当ての入力待ち中は B / Esc で戻らず、UI の選択も動かない。デバッグメニューをゲームパッドで操作している間はゲームの入力を止める
 - アセンブリの分割: `LocalizedText` / `LocalizedImage` / `LocalizedAudio` / `SubtitleText` を `Abubu.Localization.UI` に移動 (.meta の GUID は維持)。言語ごとのフォントは `LocalizationSettings.Fonts` から `LocalizationFontSettings` (Module Settings に入れる) / `ILocalizedFontService` に移動し、`ILocalizationService.GetFont` を削除。翻訳の連携 (`LocalizedDialogLabels` / `LocalizedGraphicsSettingsLabels` など) を連携用アセンブリに移動し、`Abubu.Installer` は uGUI / TMP に依存しなくなった

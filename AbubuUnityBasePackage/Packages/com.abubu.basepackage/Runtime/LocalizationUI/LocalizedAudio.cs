@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Abubu.Localization
 {
     /// <summary>
-    /// AudioSource に付けると、Key に対応する言語ごとの AudioClip (LocalizationTable の Assets) を設定する。
+    /// AudioSource に付けると、Key に対応する言語ごとの AudioClip (AbubuLocalizationTable の Assets) を設定する。
     /// ボイスやナレーションの差し替えに使う。
     /// </summary>
     [DisallowMultipleComponent]

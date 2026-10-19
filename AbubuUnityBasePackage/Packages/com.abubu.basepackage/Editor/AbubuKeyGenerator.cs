@@ -13,7 +13,7 @@ namespace Abubu.Editor
 {
     /// <summary>
     /// Tools > Abubu > Generate Keys
-    /// SoundLibrary / EffectLibrary / LocalizationTable に登録されたキーと Build Profiles のシーン名から、文字列リテラルの代わりに使える定数クラスを生成する。
+    /// SoundLibrary / EffectLibrary / AbubuLocalizationTable に登録されたキーと Build Profiles のシーン名から、文字列リテラルの代わりに使える定数クラスを生成する。
     /// <code>
     /// Sound.PlaySe(SoundKeys.Se.Jump);        // "jump" と書くより、タイポがコンパイルエラーになる
     /// Fx.Play(EffectKeys.Explosion, pos);
@@ -81,7 +81,7 @@ namespace Abubu.Editor
             FindAssets<EffectLibrary>().SelectMany(l => l.Keys).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
 
         private static List<string> CollectLocalizationKeys() =>
-            FindAssets<LocalizationTable>().SelectMany(t => t.GetAllKeys()).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
+            FindAssets<AbubuLocalizationTable>().SelectMany(t => t.GetAllKeys()).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
 
         /// <summary>Build Profiles (Build Settings) で有効になっているシーンの名前</summary>
         private static List<string> CollectSceneNames() =>

@@ -5,7 +5,9 @@
         "Abubu.Core",
         "Abubu.Save",
         "Abubu.Pause",
+        "Abubu.Debugging",
         "Unity.InputSystem",
+        "UnityEngine.UI",
         "UniTask",
         "R3.Unity",
         "Zenject"

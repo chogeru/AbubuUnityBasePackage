@@ -6,55 +6,63 @@ using Zenject;
 
 namespace Abubu.Effects
 {
-    [Serializable]
-    public sealed class EffectSettings
-    {
-        public EffectLibrary Library;
-    }
-
-    /// <summary>
-    /// エフェクト再生時に割り込む処理 (SE を鳴らす、カメラを揺らす、など)。
-    /// Container.Bind&lt;IEffectPlayHook&gt;().To&lt;MyHook&gt;().AsSingle() で追加できる。
-    /// </summary>
-    public interface IEffectPlayHook
-    {
-        void OnPlay(EffectEntry entry, GameObject instance, Vector3 position);
-    }
-
-    /// <summary>
-    /// エフェクト (パーティクル等) をプールから出し、終わったら自動で返却する。SE も同時に鳴らせる。
-    /// <code>
-    /// _effect.Play("explosion", enemy.position);
-    /// _effect.Play(hitPrefab, hitPoint, Quaternion.LookRotation(normal));
-    /// </code>
-    /// </summary>
-    public interface IEffectService
-    {
-        GameObject Play(string key, Vector3 position, Quaternion? rotation = null, Transform parent = null);
-        GameObject Play(GameObject prefab, Vector3 position, Quaternion? rotation = null, Transform parent = null, float lifetime = 0f);
-        void Stop(GameObject instance);
-    }
-
+    /// <summary><see cref="IEffectService"/> の標準実装。生成と返却は <see cref="IPoolService"/> に任せ、再生と寿命の判定だけを行う</summary>
     public sealed class EffectService : IEffectService, IInitializable
     {
+        /// <summary>プレハブから計算した寿命。Looping は「自動返却しない」</summary>
+        private readonly struct Duration
+        {
+            public readonly float Seconds;
+            public readonly bool Looping;
+            public readonly bool HasParticles;
+            public readonly bool Unscaled;
+
+            public Duration(float seconds, bool looping, bool hasParticles, bool unscaled)
+            {
+                Seconds = seconds;
+                Looping = looping;
+                HasParticles = hasParticles;
+                Unscaled = unscaled;
+            }
+        }
+
         private readonly IPoolService _pool;
         private readonly List<IEffectPlayHook> _hooks;
+        private readonly EffectSettings _settings;
         private readonly EffectLibrary _library;
-        private readonly Dictionary<GameObject, float> _durationCache = new();
+
+        /// <summary>プレハブ → 寿命 (プレハブごとに 1 回だけ計算する)</summary>
+        private readonly Dictionary<GameObject, Duration> _durations = new();
+
+        /// <summary>
+        /// インスタンス → 再生する最上位の ParticleSystem。再生のたびに GetComponentsInChildren しないためのキャッシュ。
+        /// プールのインスタンスは使い回されるので、1 インスタンスにつき 1 回だけ集める
+        /// </summary>
+        private readonly Dictionary<GameObject, ParticleSystem[]> _particles = new();
+
+        /// <summary>DefaultLifetime を使ったことを警告済みのプレハブ</summary>
+        private readonly HashSet<GameObject> _warnedFallback = new();
+
+        private readonly List<ParticleSystem> _psBuffer = new();
+        private readonly List<GameObject> _keyBuffer = new();
 
         public EffectService(IPoolService pool, EffectSettings settings, List<IEffectPlayHook> hooks = null)
         {
-            _pool = pool;
-            _library = settings.Library;
+            _pool = pool ?? throw new ArgumentNullException(nameof(pool));
+            _settings = settings ?? new EffectSettings();
+            _library = _settings.Library;
             _hooks = hooks ?? new List<IEffectPlayHook>();
         }
 
+        /// <summary>EffectLibrary の Prewarm / MaxPooled をプールへ反映する</summary>
         public void Initialize()
         {
             if (_library == null) return;
-            foreach (var entry in _library.Effects)
+            foreach (var entry in _library.AllEffects)
             {
-                if (entry.Prefab != null && entry.Prewarm > 0) _pool.Prewarm(entry.Prefab, entry.Prewarm);
+                if (entry == null || entry.Prefab == null) continue;
+                if (entry.MaxPooled > 0) _pool.Configure(entry.Prefab, new PoolOptions(entry.MaxPooled));
+                if (entry.Prewarm > 0) _pool.Prewarm(entry.Prefab, entry.Prewarm);
             }
         }
 
@@ -74,51 +82,101 @@ namespace Abubu.Effects
 
         public GameObject Play(GameObject prefab, Vector3 position, Quaternion? rotation = null, Transform parent = null, float lifetime = 0f)
         {
+            if (prefab == null) throw new ArgumentNullException(nameof(prefab));
+
             var instance = _pool.Rent(prefab, position, rotation ?? prefab.transform.rotation, parent);
-
-            // ルートに ParticleSystem があれば子ごと 1 回で再生。無ければ最上位の ParticleSystem だけ再生する
-            if (instance.TryGetComponent<ParticleSystem>(out var root))
+            foreach (var ps in GetRootParticles(instance))
             {
-                root.Clear(true);
-                root.Play(true);
-            }
-            else
-            {
-                foreach (var ps in instance.GetComponentsInChildren<ParticleSystem>())
-                {
-                    var psParent = ps.transform.parent;
-                    if (psParent != null && psParent.GetComponentInParent<ParticleSystem>() != null) continue;
-                    ps.Clear(true);
-                    ps.Play(true);
-                }
+                ps.Clear(true);
+                ps.Play(true);
             }
 
-            var duration = lifetime > 0f ? lifetime : GetParticleDuration(prefab);
-            if (duration > 0f) _pool.ReturnAfter(instance, duration);
+            ScheduleReturn(prefab, instance, lifetime);
             return instance;
         }
 
         public void Stop(GameObject instance) => _pool.Return(instance);
 
-        /// <summary>パーティクルが消えきるまでの秒数。ループを含む場合は 0 (自動返却しない)</summary>
-        private float GetParticleDuration(GameObject prefab)
+        private void ScheduleReturn(GameObject prefab, GameObject instance, float lifetime)
         {
-            if (_durationCache.TryGetValue(prefab, out var cached)) return cached;
-
-            var duration = 0f;
-            foreach (var ps in prefab.GetComponentsInChildren<ParticleSystem>(true))
+            var duration = GetDuration(prefab);
+            if (lifetime > 0f)
             {
-                var main = ps.main;
-                if (main.loop)
-                {
-                    duration = 0f;
-                    break;
-                }
-                duration = Mathf.Max(duration, MaxOf(main.startDelay) + main.duration + MaxOf(main.startLifetime));
+                _pool.ReturnAfter(instance, lifetime, duration.Unscaled);
+                return;
             }
 
-            _durationCache[prefab] = duration;
-            return duration;
+            if (duration.Looping) return;
+            if (duration.HasParticles)
+            {
+                if (duration.Seconds > 0f) _pool.ReturnAfter(instance, duration.Seconds, duration.Unscaled);
+                return;
+            }
+
+            // ParticleSystem が無いと長さが分からない。返却されずに残り続けるのを防ぐため既定の秒数で返す
+            if (_settings.DefaultLifetime <= 0f) return;
+            if (_warnedFallback.Add(prefab))
+            {
+                Debug.LogWarning($"[Abubu.Effect] \"{prefab.name}\" には ParticleSystem が無いため、{_settings.DefaultLifetime} 秒後に返却します。EffectEntry の Lifetime か Play の lifetime 引数で指定してください。");
+            }
+            _pool.ReturnAfter(instance, _settings.DefaultLifetime);
+        }
+
+        /// <summary>再生すべき ParticleSystem (他の ParticleSystem の子でないもの)。子は親の Play(true) で一緒に再生される</summary>
+        private ParticleSystem[] GetRootParticles(GameObject instance)
+        {
+            if (_particles.TryGetValue(instance, out var cached)) return cached;
+
+            // 破棄済みのインスタンスが溜まり続けないように、表が大きくなったら掃除する
+            if (_particles.Count >= 256) PurgeDestroyed();
+
+            instance.GetComponentsInChildren(true, _psBuffer);
+            var roots = new List<ParticleSystem>();
+            foreach (var ps in _psBuffer)
+            {
+                var parent = ps.transform.parent;
+                if (parent == null || parent.GetComponentInParent<ParticleSystem>(true) == null) roots.Add(ps);
+            }
+            _psBuffer.Clear();
+
+            var result = roots.ToArray();
+            _particles[instance] = result;
+            return result;
+        }
+
+        private void PurgeDestroyed()
+        {
+            _keyBuffer.Clear();
+            foreach (var key in _particles.Keys)
+            {
+                if (key == null) _keyBuffer.Add(key);
+            }
+            foreach (var key in _keyBuffer) _particles.Remove(key);
+            _keyBuffer.Clear();
+        }
+
+        /// <summary>パーティクルが消えきるまでの秒数 (simulationSpeed を考慮)。ループを含む場合は Looping</summary>
+        private Duration GetDuration(GameObject prefab)
+        {
+            if (_durations.TryGetValue(prefab, out var cached)) return cached;
+
+            var seconds = 0f;
+            var looping = false;
+            var unscaled = false;
+            prefab.GetComponentsInChildren(true, _psBuffer);
+            foreach (var ps in _psBuffer)
+            {
+                var main = ps.main;
+                if (main.loop) looping = true;
+                if (main.useUnscaledTime) unscaled = true;
+                var speed = main.simulationSpeed > 0f ? main.simulationSpeed : 1f;
+                seconds = Mathf.Max(seconds, (MaxOf(main.startDelay) + main.duration + MaxOf(main.startLifetime)) / speed);
+            }
+            var result = new Duration(seconds, looping, _psBuffer.Count > 0, unscaled);
+            _psBuffer.Clear();
+
+            _durations[prefab] = result;
+            return result;
         }
 
         // Curve モードでは constantMax が 0 になるため、curveMultiplier (カーブの最大倍率) を使う

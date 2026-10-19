@@ -4,12 +4,12 @@ using Abubu.App;
 using Abubu.Audio;
 using Abubu.Boot;
 using Abubu.Effects;
-using Abubu.Graphics;
+using Abubu.DisplaySettings;
 using Abubu.Localization;
 using Abubu.Logging;
 using Abubu.Pause;
 using Abubu.Save;
-using Abubu.Scene;
+using Abubu.SceneFlow;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -34,7 +34,7 @@ namespace Abubu
         public EffectSettings Effects = new();
         public SaveSettings Save = new();
         public PauseSettings Pause = new();
-        public LocalizationSettings Localization = new();
+        public AbubuLocalizationSettings Localization = new();
         [FormerlySerializedAs("App")]
         public AppSettings AppLifecycle = new();
         public LogSettings Log = new();

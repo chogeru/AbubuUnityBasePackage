@@ -14,6 +14,11 @@ namespace Abubu.Audio
         public AudioSource Source { get; }
         public SoundEntry Entry { get; private set; }
         public bool IsPlaying => Source != null && Source.isPlaying;
+        /// <summary>Stop のたびに増える。非同期の読み込み中に別の用途へ使い回されていないかの判定に使う</summary>
+        public int Version { get; private set; }
+
+        /// <summary>Entry の Clip 参照を返す先 (参照を取得していなければ null)</summary>
+        private IAudioClipProvider _owner;
 
         private float _entryVolume = 1f;
         private float _fade = 1f;
@@ -26,11 +31,14 @@ namespace Abubu.Audio
             Source.playOnAwake = false;
         }
 
-        public void Setup(SoundEntry entry, bool loop)
+        /// <param name="owner">clip の参照を取得した provider (Stop / 次の Setup で返す)。返す必要がなければ null</param>
+        public void Setup(SoundEntry entry, AudioClip clip, bool loop, IAudioClipProvider owner)
         {
+            ReleaseClip();
             Entry = entry;
+            _owner = owner;
             _entryVolume = entry.Volume;
-            Source.clip = entry.PickClip();
+            Source.clip = clip;
             Source.pitch = entry.PickPitch();
             Source.loop = loop;
             Apply();
@@ -77,10 +85,21 @@ namespace Abubu.Audio
         public void Stop()
         {
             _fadeHandle.TryCancel();
-            if (Source == null) return;
-            Source.Stop();
-            Source.clip = null;
+            Version++;
+            if (Source != null)
+            {
+                Source.Stop();
+                Source.clip = null;
+            }
+            ReleaseClip();
             Entry = null;
+        }
+
+        private void ReleaseClip()
+        {
+            var owner = _owner;
+            _owner = null;
+            if (owner != null && Entry != null) owner.Release(Entry);
         }
 
         private void Apply()

@@ -10,7 +10,7 @@ namespace Abubu.Editor
 {
     /// <summary>
     /// 翻訳テーブルの CSV / TSV 書き出し・読み込み。Google スプレッドシートで翻訳してから戻す、という使い方を想定している。
-    /// Tools > Abubu > Localization、または LocalizationTable の右クリック (Inspector の ⋮) メニューから使う。
+    /// Tools > Abubu > Localization、または AbubuLocalizationTable の右クリック (Inspector の ⋮) メニューから使う。
     /// </summary>
     public static class AbubuLocalizationMenu
     {
@@ -26,12 +26,12 @@ namespace Abubu.Editor
         private static void Import() => Import(FindTargetTable());
 
         [MenuItem("CONTEXT/LocalizationTable/Export CSV...")]
-        private static void ExportCsvContext(MenuCommand command) => Export(command.context as LocalizationTable, ',');
+        private static void ExportCsvContext(MenuCommand command) => Export(command.context as AbubuLocalizationTable, ',');
 
         [MenuItem("CONTEXT/LocalizationTable/Import CSV or TSV...")]
-        private static void ImportContext(MenuCommand command) => Import(command.context as LocalizationTable);
+        private static void ImportContext(MenuCommand command) => Import(command.context as AbubuLocalizationTable);
 
-        private static void Export(LocalizationTable table, char delimiter)
+        private static void Export(AbubuLocalizationTable table, char delimiter)
         {
             if (table == null) return;
             var extension = delimiter == '\t' ? "tsv" : "csv";
@@ -42,7 +42,7 @@ namespace Abubu.Editor
             Debug.Log($"[Abubu.Localization] {table.name} を書き出しました: {path}");
         }
 
-        private static void Import(LocalizationTable table)
+        private static void Import(AbubuLocalizationTable table)
         {
             if (table == null) return;
             var path = EditorUtility.OpenFilePanelWithFilters("翻訳を読み込む", "", new[] { "CSV / TSV", "csv,tsv,txt" });
@@ -55,10 +55,10 @@ namespace Abubu.Editor
             Debug.Log($"[Abubu.Localization] {table.name} に読み込みました: 追加 {result.Added} 件 / 更新 {result.Updated} 件 (言語: {string.Join(", ", table.Languages)})");
         }
 
-        /// <summary>選択中の LocalizationTable。無ければ AbubuSettings に設定されているもの</summary>
-        private static LocalizationTable FindTargetTable()
+        /// <summary>選択中の AbubuLocalizationTable。無ければ AbubuSettings に設定されているもの</summary>
+        private static AbubuLocalizationTable FindTargetTable()
         {
-            if (Selection.activeObject is LocalizationTable selected) return selected;
+            if (Selection.activeObject is AbubuLocalizationTable selected) return selected;
 
             var table = AssetDatabase.FindAssets("t:AbubuSettings")
                 .Select(guid => AssetDatabase.LoadAssetAtPath<AbubuSettings>(AssetDatabase.GUIDToAssetPath(guid)))
@@ -72,18 +72,18 @@ namespace Abubu.Editor
         }
     }
 
-    /// <summary>LocalizationTable と CSV / TSV の変換 (テストしやすいよう副作用はテーブルの書き換えだけ)</summary>
+    /// <summary>AbubuLocalizationTable と CSV / TSV の変換 (テストしやすいよう副作用はテーブルの書き換えだけ)</summary>
     public static class LocalizationTableIO
     {
         /// <summary>テーブルの文字列 (Includes・Csv Sources を含む) を CSV / TSV にする</summary>
-        public static string Export(LocalizationTable table, char delimiter = ',') =>
+        public static string Export(AbubuLocalizationTable table, char delimiter = ',') =>
             LocalizationCsv.Write(table.GetAllLanguages(), table.Build(), delimiter);
 
         /// <summary>
         /// CSV / TSV をテーブルの Entries に取り込む。同じキーは上書き、無いキーは追加、見出しに無い言語は Languages に追加する。
         /// 空のセルは既存の訳を消さない
         /// </summary>
-        public static (int Added, int Updated) Import(LocalizationTable table, string text)
+        public static (int Added, int Updated) Import(AbubuLocalizationTable table, string text)
         {
             var rows = LocalizationCsv.Parse(text);
             if (rows.Count == 0) return (0, 0);

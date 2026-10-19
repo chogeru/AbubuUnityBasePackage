@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Abubu.Scene
+namespace Abubu.SceneFlow
 {
     [Serializable]
     public sealed class SceneSettings
@@ -16,8 +16,12 @@ namespace Abubu.Scene
         [Tooltip("任意。ロード中に表示するプレハブ (SceneLoadingView を付ける)。未設定ならフェードのみ")]
         public GameObject LoadingViewPrefab;
 
-        [Tooltip("フェード用 Canvas の sortingOrder")]
+        [Tooltip("フェード用 Canvas の sortingOrder (FadePrefab 未設定時に自動生成する Canvas に使う)")]
         public int SortingOrder = 30000;
+
+        [Tooltip("任意。フェードに使うプレハブ (CanvasGroup 必須。子の Image に FadeColor が反映される)。" +
+                 "未設定なら ScreenSpaceOverlay の Canvas を自動生成する (VR では見えないため、VR では ISceneTransition を独自実装すること)")]
+        public GameObject FadePrefab;
     }
 
     /// <summary>LoadAsync 呼び出しごとに SceneSettings の値を上書きしたい時に使う</summary>

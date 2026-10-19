@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Abubu.Input.UI;
+using Abubu.Inputs.UI;
 using R3;
 using Zenject;
 

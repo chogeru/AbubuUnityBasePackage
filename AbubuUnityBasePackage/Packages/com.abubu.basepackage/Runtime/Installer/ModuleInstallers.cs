@@ -4,12 +4,12 @@ using Abubu.Audio;
 using Abubu.Boot;
 using Abubu.Effects;
 using Abubu.Events;
-using Abubu.Graphics;
+using Abubu.DisplaySettings;
 using Abubu.Localization;
 using Abubu.Pause;
 using Abubu.Pool;
 using Abubu.Save;
-using Abubu.Scene;
+using Abubu.SceneFlow;
 using Zenject;
 
 namespace Abubu.Installers
@@ -151,9 +151,9 @@ namespace Abubu.Installers
     /// <summary>ILocalizationService (+ 差し替え可能な ILocalizationSource)。ISaveService があれば選んだ言語を保存する</summary>
     public static class LocalizationInstaller
     {
-        public static void Install(DiContainer container, LocalizationSettings settings)
+        public static void Install(DiContainer container, AbubuLocalizationSettings settings)
         {
-            settings ??= new LocalizationSettings();
+            settings ??= new AbubuLocalizationSettings();
             container.BindInstance(settings).IfNotBound();
             if (!container.HasBinding<ILocalizationSource>())
             {

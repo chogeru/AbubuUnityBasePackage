@@ -111,7 +111,7 @@ namespace Abubu.Tests
             }
         }
 
-        private static LocalizationSettings Settings(string startup = "en") => new() { StartupLanguage = startup, RememberLanguage = false };
+        private static AbubuLocalizationSettings Settings(string startup = "en") => new() { StartupLanguage = startup, RememberLanguage = false };
 
         [Test]
         public void Lookup_FallsBackThroughParentLanguages()
@@ -122,7 +122,7 @@ namespace Abubu.Tests
                 ["zh-Hant"] = new() { ["a"] = "hant-a", ["b"] = "hant-b" },
                 ["zh-Hant-TW"] = new() { ["a"] = "tw-a" },
             });
-            using var loc = new LocalizationService(source, new LocalizationSettings { StartupLanguage = "zh-Hant-TW", FallbackLanguage = "en", RememberLanguage = false });
+            using var loc = new LocalizationService(source, new AbubuLocalizationSettings { StartupLanguage = "zh-Hant-TW", FallbackLanguage = "en", RememberLanguage = false });
 
             Assert.That(loc.Get("a"), Is.EqualTo("tw-a"));
             Assert.That(loc.Get("b"), Is.EqualTo("hant-b"));
@@ -151,8 +151,8 @@ namespace Abubu.Tests
         public void MissingKeyBehavior_IsConfigurable()
         {
             var source = new DictionarySource(new Dictionary<string, Dictionary<string, string>> { ["en"] = new() });
-            using var bracketed = new LocalizationService(source, new LocalizationSettings { MissingKey = MissingKeyBehavior.Bracketed, WarnMissingKeys = false });
-            using var empty = new LocalizationService(source, new LocalizationSettings { MissingKey = MissingKeyBehavior.Empty, WarnMissingKeys = false });
+            using var bracketed = new LocalizationService(source, new AbubuLocalizationSettings { MissingKey = MissingKeyBehavior.Bracketed, WarnMissingKeys = false });
+            using var empty = new LocalizationService(source, new AbubuLocalizationSettings { MissingKey = MissingKeyBehavior.Empty, WarnMissingKeys = false });
 
             Assert.That(bracketed.Get("menu.start"), Is.EqualTo("[menu.start]"));
             Assert.That(empty.Get("menu.start"), Is.EqualTo(string.Empty));
@@ -268,7 +268,7 @@ namespace Abubu.Tests
         [Test]
         public void Assets_FallBackToOtherLanguages()
         {
-            var table = ScriptableObject.CreateInstance<LocalizationTable>();
+            var table = ScriptableObject.CreateInstance<AbubuLocalizationTable>();
             var enClip = AudioClip.Create("en", 1, 1, 44100, false);
             try
             {
@@ -301,7 +301,7 @@ namespace Abubu.Tests
             foreach (var delimiter in new[] { ',', '\t' })
             {
                 var text = LocalizationCsv.Write(new[] { "ja", "en" }, values, delimiter);
-                var table = ScriptableObject.CreateInstance<LocalizationTable>();
+                var table = ScriptableObject.CreateInstance<AbubuLocalizationTable>();
                 try
                 {
                     table.Languages = new List<string> { "en" };

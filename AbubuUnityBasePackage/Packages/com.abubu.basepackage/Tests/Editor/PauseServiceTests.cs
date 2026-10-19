@@ -63,6 +63,43 @@ namespace Abubu.Tests
             Assert.That(Time.timeScale, Is.EqualTo(1f));
         }
 
+        /// <summary>Time.timeScale を触らない、テスト用の時間管理</summary>
+        private sealed class FakeTimeScale : ITimeScaleController
+        {
+            public float TimeScale { get; set; } = 1f;
+        }
+
+        [Test]
+        public void CustomController_IsUsed_InsteadOfTimeScale()
+        {
+            Time.timeScale = 1f;
+            var clock = new FakeTimeScale { TimeScale = 0.8f };
+            using var pause = new PauseService(null, clock);
+            var owner = new object();
+
+            pause.Pause(owner);
+            Assert.That(clock.TimeScale, Is.Zero);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+            pause.Resume(owner);
+            Assert.That(clock.TimeScale, Is.EqualTo(0.8f));
+        }
+
+        [Test]
+        public void TimeScaleChangedDuringPause_IsRespectedOnResume()
+        {
+            var clock = new FakeTimeScale { TimeScale = 1f };
+            using var pause = new PauseService(null, clock);
+            var owner = new object();
+
+            pause.Pause(owner);
+            clock.TimeScale = 0.3f; // ポーズ中に他のコードが変更 (スロー演出など)
+            pause.Resume(owner);
+
+            // 古い値 (1) で上書きしない
+            Assert.That(clock.TimeScale, Is.EqualTo(0.3f));
+        }
+
         [Test]
         public void ResumeAll_And_UnknownOwner()
         {

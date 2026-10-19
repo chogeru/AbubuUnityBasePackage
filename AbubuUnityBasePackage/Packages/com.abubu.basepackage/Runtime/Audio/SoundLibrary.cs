@@ -20,24 +20,50 @@ namespace Abubu.Audio
         [SerializeField] private List<SoundLibrary> includes = new();
 
         private Dictionary<string, SoundEntry>[] _cache;
+#if UNITY_EDITOR
+        /// <summary>
+        /// いずれかの SoundLibrary が編集されるたびに増える番号。
+        /// includes 先の編集も検知できるよう、全ライブラリ共通の番号とキャッシュ作成時の番号を比べる
+        /// </summary>
+        private static int s_editorVersion;
+        private int _cacheVersion = -1;
+#endif
 
         public bool TryGet(SoundCategory category, string key, out SoundEntry entry)
         {
-#if UNITY_EDITOR
-            RebuildInEditor();
-#endif
-            _cache ??= BuildCache();
-            return _cache[(int)category].TryGetValue(key, out entry);
+            if (key == null)
+            {
+                entry = null;
+                return false;
+            }
+            return GetCache()[(int)category].TryGetValue(key, out entry);
         }
 
         /// <summary>指定カテゴリに登録されているキー (includes 先を含む)。タイポ時の候補表示やキー定数の生成に使う</summary>
-        public IEnumerable<string> GetKeys(SoundCategory category)
+        public IEnumerable<string> GetKeys(SoundCategory category) => GetCache()[(int)category].Keys;
+
+        /// <summary>
+        /// 検索用キャッシュを捨てる。実行時にスクリプトからエントリや includes を書き換えた場合に呼ぶ
+        /// (インスペクタでの編集は自動で反映される)
+        /// </summary>
+        public void ClearCache()
+        {
+            _cache = null;
+#if UNITY_EDITOR
+            s_editorVersion++;
+#endif
+        }
+
+        private Dictionary<string, SoundEntry>[] GetCache()
         {
 #if UNITY_EDITOR
-            RebuildInEditor();
+            if (_cacheVersion != s_editorVersion)
+            {
+                _cache = null;
+                _cacheVersion = s_editorVersion;
+            }
 #endif
-            _cache ??= BuildCache();
-            return _cache[(int)category].Keys;
+            return _cache ??= BuildCache();
         }
 
         public IReadOnlyList<SoundEntry> GetEntries(SoundCategory category) => category switch
@@ -79,13 +105,9 @@ namespace Abubu.Audio
             foreach (var include in library.includes) Collect(include, cache, visited);
         }
 
-        // Domain Reload 無効時や includes 先の編集に備えて、有効化時にもキャッシュを捨てる
-        private void OnEnable() => _cache = null;
-        private void OnValidate() => _cache = null;
-
-#if UNITY_EDITOR
-        // エディタでは includes 先の変更を検知できないため毎回作り直す (件数が少ないので十分軽い)
-        private void RebuildInEditor() => _cache = null;
-#endif
+        // Domain Reload 無効時や includes 先の編集に備えて、有効化時・編集時にキャッシュを捨てる
+        // (エディタでは全ライブラリ共通の番号を進めるので、このライブラリを include している側も作り直される)
+        private void OnEnable() => ClearCache();
+        private void OnValidate() => ClearCache();
     }
 }

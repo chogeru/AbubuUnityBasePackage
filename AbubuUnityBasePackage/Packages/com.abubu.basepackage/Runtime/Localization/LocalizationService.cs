@@ -86,7 +86,7 @@ namespace Abubu.Localization
 
     public sealed class LocalizationService : ILocalizationService, IInitializable, IDisposable
     {
-        /// <summary>選んだ言語を保存する既定のキー (LocalizationSettings.SaveKey で変更できる)</summary>
+        /// <summary>選んだ言語を保存する既定のキー (AbubuLocalizationSettings.SaveKey で変更できる)</summary>
         public const string SaveKey = "abubu.language";
 
         /// <summary>言語名をテーブルで上書きするときのキーの接頭辞 ("language.ja")</summary>
@@ -96,7 +96,7 @@ namespace Abubu.Localization
 
         private readonly ILocalizationSource _source;
         private readonly IAsyncLocalizationSource _asyncSource;
-        private readonly LocalizationSettings _settings;
+        private readonly AbubuLocalizationSettings _settings;
         private readonly ISaveService _save;
 
         private string LanguageSaveKey => string.IsNullOrWhiteSpace(_settings.SaveKey) ? SaveKey : _settings.SaveKey;
@@ -136,10 +136,10 @@ namespace Abubu.Localization
 
         /// <param name="source">翻訳の取得元</param>
         /// <param name="save">選んだ言語の保存先。null なら保存しない</param>
-        public LocalizationService(ILocalizationSource source, [InjectOptional] LocalizationSettings settings = null,
+        public LocalizationService(ILocalizationSource source, [InjectOptional] AbubuLocalizationSettings settings = null,
             [InjectOptional] ISaveService save = null)
         {
-            _settings = settings ?? new LocalizationSettings();
+            _settings = settings ?? new AbubuLocalizationSettings();
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _asyncSource = source as IAsyncLocalizationSource;
             _save = _settings.RememberLanguage ? save : null;

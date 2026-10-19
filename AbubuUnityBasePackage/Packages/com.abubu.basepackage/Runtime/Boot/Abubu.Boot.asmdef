@@ -3,6 +3,7 @@
     "rootNamespace": "Abubu",
     "references": [
         "Abubu.Scene",
+        "Abubu.Core",
         "UniTask",
         "R3.Unity",
         "Zenject"

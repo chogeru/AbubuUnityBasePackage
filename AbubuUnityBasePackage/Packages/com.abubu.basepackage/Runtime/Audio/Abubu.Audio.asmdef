@@ -7,7 +7,6 @@
         "UniTask",
         "R3.Unity",
         "Zenject",
-        "uPools",
         "LitMotion"
     ],
     "includePlatforms": [],
@@ -20,8 +19,7 @@
         "ABUBU_DEPS_LITMOTION",
         "ABUBU_DEPS_R3",
         "ABUBU_DEPS_UNITASK",
-        "ABUBU_DEPS_ZENJECT",
-        "ABUBU_DEPS_UPOOLS"
+        "ABUBU_DEPS_ZENJECT"
     ],
     "versionDefines": [
         {
@@ -43,11 +41,6 @@
             "name": "com.svermeulen.extenject",
             "expression": "",
             "define": "ABUBU_DEPS_ZENJECT"
-        },
-        {
-            "name": "com.annulusgames.u-pools",
-            "expression": "",
-            "define": "ABUBU_DEPS_UPOOLS"
         }
     ],
     "noEngineReferences": false

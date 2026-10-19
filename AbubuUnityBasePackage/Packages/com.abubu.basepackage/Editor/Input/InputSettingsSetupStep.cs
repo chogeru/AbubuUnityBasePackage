@@ -1,5 +1,5 @@
 using System.Linq;
-using Abubu.Input;
+using Abubu.Inputs;
 using UnityEditor;
 using UnityEngine;
 

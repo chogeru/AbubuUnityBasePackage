@@ -13,6 +13,8 @@ namespace Abubu.Samples
 
         [SerializeField] private Text info;
         [SerializeField] private GameObject cubePrefab;
+        [Tooltip("Build Settings 未登録でもエディタで遷移できるよう、タイトルシーンのパスを保持する (サンプル生成時に設定される)")]
+        [SerializeField] private string titleScenePath;
 
         private int _score;
 
@@ -39,6 +41,12 @@ namespace Abubu.Samples
             {
                 var position = new Vector3(UnityEngine.Random.Range(-3f, 3f), 5f + i * 0.5f, UnityEngine.Random.Range(-1f, 1f));
                 var cube = Pools.Rent(cubePrefab, position, UnityEngine.Random.rotation);
+                // プール機能が無効 (AbubuSettings.Modules) または未初期化の場合は null が返る
+                if (cube == null)
+                {
+                    Refresh("プールが利用できません (AbubuSettings でプール機能が有効か確認してください)");
+                    return;
+                }
                 if (cube.TryGetComponent<Rigidbody>(out var body))
                 {
                     body.linearVelocity = Vector3.zero;
@@ -64,8 +72,20 @@ namespace Abubu.Samples
             Refresh("スコアをリセットしました");
         }
 
-        public void Reload() => Scenes.Reload();
-        public void BackToTitle() => Scenes.Load(SampleTitleController.SceneName);
+        public void Reload()
+        {
+            // Build Settings に登録済みなら通常のリロード (payload も引き継がれる)。未登録ならエディタ上でパス指定で読み直す
+            if (Application.CanStreamedLevelBeLoaded(SceneName))
+            {
+                Scenes.Reload();
+                return;
+            }
+
+            var path = SampleScenes.Resolve(SceneName, gameObject.scene.path);
+            if (Scenes.TryGetPayload<SampleGamePayload>(out var payload)) Scenes.LoadWith(path, payload);
+            else Scenes.Load(path);
+        }
+        public void BackToTitle() => Scenes.Load(SampleScenes.Resolve(SampleTitleController.SceneName, titleScenePath));
 
         private void Refresh(string message)
         {

@@ -1,7 +1,7 @@
 {
   "name": "com.abubu.basepackage",
   "displayName": "Abubu Base Package",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "unity": "6000.0",
   "description": "ゲームジャム/新規プロジェクト向けの基盤パッケージ。シーン遷移、サウンド、プール、セーブ、入力、ポップアップ、音量設定UI(MVP)などを Zenject + UniTask + R3 + uPools + LitMotion で提供します。",
   "keywords": [
@@ -18,12 +18,15 @@
   },
   "license": "MIT",
   "dependencies": {
-    "com.unity.ugui": "2.0.0"
+    "com.unity.ugui": "2.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.particlesystem": "1.0.0"
   },
   "samples": [
     {
       "displayName": "Basic Demo",
-      "description": "全機能を試せるサンプル。インポート後に Tools > Abubu > Create Sample Scenes を実行してください。",
+      "description": "全機能を試せるサンプル。インポート後に Tools > Abubu > Create Sample Scenes を実行してください (生成内容は実行前に確認ダイアログで表示されます。Build Settings への追加は任意)。",
       "path": "Samples~/BasicDemo"
     }
   ]

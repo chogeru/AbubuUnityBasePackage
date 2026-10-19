@@ -62,7 +62,7 @@ namespace Abubu.Tests
         [Test]
         public void Get_ReturnsCurrentLanguage_AndFallsBack()
         {
-            using var loc = new LocalizationService(CreateSource(), new LocalizationSettings { StartupLanguage = "en", RememberLanguage = false });
+            using var loc = new LocalizationService(CreateSource(), new AbubuLocalizationSettings { StartupLanguage = "en", RememberLanguage = false });
 
             Assert.That(loc.Language.CurrentValue, Is.EqualTo("en"));
             Assert.That(loc.Get("start"), Is.EqualTo("Start"));
@@ -74,7 +74,7 @@ namespace Abubu.Tests
         [Test]
         public void MissingKey_ReturnsKey_AndWarnsOnce()
         {
-            using var loc = new LocalizationService(CreateSource(), new LocalizationSettings { StartupLanguage = "ja", RememberLanguage = false });
+            using var loc = new LocalizationService(CreateSource(), new AbubuLocalizationSettings { StartupLanguage = "ja", RememberLanguage = false });
 
             LogAssert.Expect(LogType.Warning, new Regex("キー \"strat\" の翻訳がありません.*\"start\""));
             Assert.That(loc.Get("strat"), Is.EqualTo("strat"));
@@ -85,7 +85,7 @@ namespace Abubu.Tests
         [Test]
         public void SetLanguage_NotifiesAndMatchesRegion()
         {
-            using var loc = new LocalizationService(CreateSource(), new LocalizationSettings { StartupLanguage = "ja", RememberLanguage = false });
+            using var loc = new LocalizationService(CreateSource(), new AbubuLocalizationSettings { StartupLanguage = "ja", RememberLanguage = false });
             var changes = new List<string>();
             using var _ = loc.Language.Subscribe(changes.Add);
 
@@ -102,7 +102,7 @@ namespace Abubu.Tests
         public void SelectedLanguage_IsRemembered()
         {
             var save = new SaveService(new MemorySaveStorage(), new JsonUtilitySaveSerializer());
-            var settings = new LocalizationSettings { StartupLanguage = "ja" };
+            var settings = new AbubuLocalizationSettings { StartupLanguage = "ja" };
             using (var loc = new LocalizationService(CreateSource(), settings, save)) loc.SetLanguage("en");
 
             using var reloaded = new LocalizationService(CreateSource(), settings, save);
@@ -116,7 +116,7 @@ namespace Abubu.Tests
             {
                 ["ja"] = new() { ["bad"] = "値: {1} {0" },
             });
-            using var loc = new LocalizationService(source, new LocalizationSettings { RememberLanguage = false });
+            using var loc = new LocalizationService(source, new AbubuLocalizationSettings { RememberLanguage = false });
 
             // 翻訳者のミスで例外にならず、値の無いプレースホルダーと閉じていない波かっこはそのまま残る
             Assert.That(loc.Get("bad", 1), Is.EqualTo("値: {1} {0"));
@@ -126,11 +126,11 @@ namespace Abubu.Tests
         [Test]
         public void Table_EntriesOverrideIncludes()
         {
-            var common = ScriptableObject.CreateInstance<LocalizationTable>();
+            var common = ScriptableObject.CreateInstance<AbubuLocalizationTable>();
             common.Entries.Add(new LocalizationEntry { Key = "start", Values = new List<string> { "共通", "Common" } });
             common.Entries.Add(new LocalizationEntry { Key = "quit", Values = new List<string> { "終了", "" } });
 
-            var table = ScriptableObject.CreateInstance<LocalizationTable>();
+            var table = ScriptableObject.CreateInstance<AbubuLocalizationTable>();
             table.Includes.Add(common);
             table.Entries.Add(new LocalizationEntry { Key = "start", Values = new List<string> { "はじめる", "Begin" } });
 

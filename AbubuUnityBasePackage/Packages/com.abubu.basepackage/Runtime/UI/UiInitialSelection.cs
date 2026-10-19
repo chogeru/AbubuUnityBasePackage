@@ -41,7 +41,7 @@ namespace Abubu.UI
 
         /// <summary>
         /// ポップアップ・画面を開いたときの選択 (AbubuUiSettings.SelectOnOpen)。
-        /// Never: UI Initial Selection が付いているときだけ選ぶ / Auto: ゲームパッド操作中なら選び、マウス操作中なら裏の UI の選択を外す / Always: 常に選ぶ
+        /// Never: UI Initial Selection が付いているときだけ選ぶ / Auto: ゲームパッド操作中なら選び、マウス操作中は UI Initial Selection が付いているときだけ選んで裏の UI の選択を外す / Always: 常に選ぶ
         /// </summary>
         internal static void ApplyOnOpen(GameObject root, UiSelectOnOpen mode, IUiInputModeSource input)
         {
@@ -61,7 +61,9 @@ namespace Abubu.UI
                     }
                     else
                     {
-                        // マウス操作中: 裏の UI が選ばれたままだと、Enter / 決定ボタンで裏のボタンが押されてしまう
+                        // マウス操作中: 明示的な初期選択 (UiInitialSelection) だけは Never と同じく適用する
+                        Apply(root);
+                        // 裏の UI が選ばれたままだと、Enter / 決定ボタンで裏のボタンが押されてしまう
                         var selected = Current;
                         if (selected != null && !selected.transform.IsChildOf(root.transform)) EventSystem.current.SetSelectedGameObject(null);
                     }

@@ -4,6 +4,7 @@
     "references": [
         "Abubu.Core",
         "Abubu.Scene",
+        "Abubu.Audio",
         "UniTask",
         "R3.Unity",
         "Zenject",

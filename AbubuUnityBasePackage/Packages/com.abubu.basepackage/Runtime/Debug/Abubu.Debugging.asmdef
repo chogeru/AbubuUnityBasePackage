@@ -2,7 +2,8 @@
     "name": "Abubu.Debugging",
     "rootNamespace": "Abubu.Debugging",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

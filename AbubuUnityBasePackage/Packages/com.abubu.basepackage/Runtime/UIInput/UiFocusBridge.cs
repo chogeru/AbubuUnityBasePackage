@@ -1,6 +1,6 @@
 using System;
 using System.Threading;
-using Abubu.Input;
+using Abubu.Inputs;
 using Cysharp.Threading.Tasks;
 using R3;
 using Zenject;

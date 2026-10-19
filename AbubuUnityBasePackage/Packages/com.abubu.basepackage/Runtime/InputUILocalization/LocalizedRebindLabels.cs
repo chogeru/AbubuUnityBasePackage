@@ -1,12 +1,12 @@
-using Abubu.Input.UI;
+using Abubu.Inputs.UI;
 using Abubu.Localization;
 using UnityEngine.Scripting;
 using Zenject;
 
-[assembly: Abubu.AbubuModuleInstaller(typeof(Abubu.Input.UI.LocalizedRebindLabelsInstaller))]
+[assembly: Abubu.AbubuModuleInstaller(typeof(Abubu.Inputs.UI.LocalizedRebindLabelsInstaller))]
 [assembly: AlwaysLinkAssembly]
 
-namespace Abubu.Input.UI
+namespace Abubu.Inputs.UI
 {
     /// <summary>
     /// キー割り当て画面 (RebindView) の文言を ILocalizationService で翻訳する。テーブルにキーが無い項目は英語の既定値を使う。

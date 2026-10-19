@@ -1,5 +1,8 @@
+using System.Reflection;
 using Abubu.Presentation;
+using Abubu.UI;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,15 +16,38 @@ namespace Abubu.Editor
     /// <remarks>
     /// Build*Panel は public なので、サンプル生成などほかのエディタ拡張からも呼び出せる。
     /// View の private シリアライズフィールドには SerializedObject 経由で UI 部品を割り当てている。
-    /// そのため View 側のフィールド名 ("master" / "resolution" など) を変えた場合はここも合わせて直すこと。
+    /// フィールド名は <see cref="VolumeFields"/> / <see cref="GraphicsFields"/> に集約してあるので、
+    /// View 側のフィールド名を変えた場合はそこを直すこと (見つからない場合はエラーログを出す)。
     /// </remarks>
     public static class AbubuUiMenu
     {
+        /// <summary><see cref="VolumeSettingsView"/> のシリアライズフィールド名</summary>
+        public static class VolumeFields
+        {
+            public const string Master = "master";
+            public const string Bgm = "bgm";
+            public const string Se = "se";
+            public const string Ambient = "ambient";
+            public const string Voice = "voice";
+            public const string Mute = "mute";
+        }
+
+        /// <summary><see cref="GraphicsSettingsView"/> のシリアライズフィールド名</summary>
+        public static class GraphicsFields
+        {
+            public const string Resolution = "resolution";
+            public const string WindowMode = "windowMode";
+            public const string Quality = "quality";
+            public const string VSync = "vSync";
+            public const string FrameRate = "frameRate";
+        }
+
         /// <summary>Hierarchy の右クリックメニューから音量設定パネルを作る。Undo に対応。</summary>
         [MenuItem("GameObject/Abubu/Volume Settings Panel", priority = 10)]
         private static void CreateVolumeSettings(MenuCommand command)
         {
-            var panel = BuildVolumeSettingsPanel(FindOrCreateCanvas());
+            if (!IsFirstInvocation(command)) return;
+            var panel = BuildVolumeSettingsPanel(FindOrCreateCanvas(command.context as GameObject));
             Undo.RegisterCreatedObjectUndo(panel, "Create Volume Settings");
             Selection.activeGameObject = panel;
         }
@@ -37,37 +63,19 @@ namespace Abubu.Editor
             var resources = GetResources();
 
             // 画面中央に固定サイズで置き、子要素は縦に並べる
-            var panel = DefaultControls.CreatePanel(resources);
-            panel.name = "VolumeSettings";
-            GameObjectUtility.SetParentAndAlign(panel, canvas.gameObject);
-            var panelRect = panel.GetComponent<RectTransform>();
-            panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(480f, 368f);
-
-            var layout = panel.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(24, 24, 24, 24);
-            layout.spacing = 12f;
-            layout.childControlHeight = layout.childControlWidth = true;
-            layout.childForceExpandHeight = false;
+            var panel = CreatePanel(canvas, resources, "VolumeSettings", new Vector2(480f, 368f));
 
             // View の各フィールドに「ラベル + スライダー」の行を割り当てる
             var view = panel.AddComponent<VolumeSettingsView>();
             var so = new SerializedObject(view);
-            so.FindProperty("master").objectReferenceValue = CreateRow(panel.transform, "Master", resources);
-            so.FindProperty("bgm").objectReferenceValue = CreateRow(panel.transform, "BGM", resources);
-            so.FindProperty("se").objectReferenceValue = CreateRow(panel.transform, "SE", resources);
-            so.FindProperty("ambient").objectReferenceValue = CreateRow(panel.transform, "Ambient", resources);
-            so.FindProperty("voice").objectReferenceValue = CreateRow(panel.transform, "Voice", resources);
-
-            // ミュート切り替え用トグル
-            var toggleGo = DefaultControls.CreateToggle(resources);
-            toggleGo.name = "Mute";
-            toggleGo.transform.SetParent(panel.transform, false);
-            toggleGo.GetComponentInChildren<Text>().text = "Mute";
-            toggleGo.GetComponent<Toggle>().isOn = false;
-            toggleGo.AddComponent<LayoutElement>().preferredHeight = 32f;
-            so.FindProperty("mute").objectReferenceValue = toggleGo.GetComponent<Toggle>();
+            Assign(so, VolumeFields.Master, CreateRow(panel.transform, "Master", resources));
+            Assign(so, VolumeFields.Bgm, CreateRow(panel.transform, "BGM", resources));
+            Assign(so, VolumeFields.Se, CreateRow(panel.transform, "SE", resources));
+            Assign(so, VolumeFields.Ambient, CreateRow(panel.transform, "Ambient", resources));
+            Assign(so, VolumeFields.Voice, CreateRow(panel.transform, "Voice", resources));
+            Assign(so, VolumeFields.Mute, CreateToggle(panel.transform, "Mute", resources));
             so.ApplyModifiedPropertiesWithoutUndo();
+            AddNavigationHelpers(panel);
             return panel;
         }
 
@@ -75,7 +83,8 @@ namespace Abubu.Editor
         [MenuItem("GameObject/Abubu/Graphics Settings Panel", priority = 11)]
         private static void CreateGraphicsSettings(MenuCommand command)
         {
-            var panel = BuildGraphicsSettingsPanel(FindOrCreateCanvas());
+            if (!IsFirstInvocation(command)) return;
+            var panel = BuildGraphicsSettingsPanel(FindOrCreateCanvas(command.context as GameObject));
             Undo.RegisterCreatedObjectUndo(panel, "Create Graphics Settings");
             Selection.activeGameObject = panel;
         }
@@ -83,7 +92,7 @@ namespace Abubu.Editor
         /// <summary>
         /// 解像度 / 表示モード / 画質 / フレームレートのドロップダウンと VSync トグルを持つパネルを生成し、
         /// <see cref="GraphicsSettingsView"/> に各 UI を結線する。
-        /// ドロップダウンの選択肢は実行時に View 側が埋める。
+        /// ドロップダウンの選択肢は実行時に GraphicsSettingsPresenter が埋める。
         /// </summary>
         /// <param name="canvas">パネルを配置する Canvas</param>
         /// <returns>生成したパネルのルート GameObject</returns>
@@ -94,19 +103,52 @@ namespace Abubu.Editor
             var panel = CreatePanel(canvas, resources, "GraphicsSettings", new Vector2(560f, 380f));
             var view = panel.AddComponent<GraphicsSettingsView>();
             var so = new SerializedObject(view);
-            so.FindProperty("resolution").objectReferenceValue = CreateLabeled(panel.transform, "解像度", DefaultControls.CreateDropdown(resources), resources);
-            so.FindProperty("windowMode").objectReferenceValue = CreateLabeled(panel.transform, "表示モード", DefaultControls.CreateDropdown(resources), resources);
-            so.FindProperty("quality").objectReferenceValue = CreateLabeled(panel.transform, "画質", DefaultControls.CreateDropdown(resources), resources);
-            so.FindProperty("frameRate").objectReferenceValue = CreateLabeled(panel.transform, "フレームレート", DefaultControls.CreateDropdown(resources), resources);
-
-            var toggleGo = DefaultControls.CreateToggle(resources);
-            toggleGo.name = "VSync";
-            toggleGo.transform.SetParent(panel.transform, false);
-            toggleGo.GetComponentInChildren<Text>().text = "VSync";
-            toggleGo.AddComponent<LayoutElement>().preferredHeight = 32f;
-            so.FindProperty("vSync").objectReferenceValue = toggleGo.GetComponent<Toggle>();
+            // 表示ラベルは英語。選択肢の文字列は View の Labels (既定は英語) で変更できる
+            Assign(so, GraphicsFields.Resolution, CreateLabeled(panel.transform, "Resolution", DefaultControls.CreateDropdown(resources), resources));
+            Assign(so, GraphicsFields.WindowMode, CreateLabeled(panel.transform, "Window Mode", DefaultControls.CreateDropdown(resources), resources));
+            Assign(so, GraphicsFields.Quality, CreateLabeled(panel.transform, "Quality", DefaultControls.CreateDropdown(resources), resources));
+            Assign(so, GraphicsFields.FrameRate, CreateLabeled(panel.transform, "Frame Rate", DefaultControls.CreateDropdown(resources), resources));
+            Assign(so, GraphicsFields.VSync, CreateToggle(panel.transform, "VSync", resources));
             so.ApplyModifiedPropertiesWithoutUndo();
+            AddNavigationHelpers(panel);
             return panel;
+        }
+
+        /// <summary>
+        /// メニューが複数選択で選択数ぶん呼ばれたとき、最初の 1 回だけ true を返す (パネルの重複生成を防ぐ)。
+        /// </summary>
+        private static bool IsFirstInvocation(MenuCommand command)
+        {
+            var selected = Selection.objects;
+            return command.context == null || selected.Length <= 1 || command.context == selected[0];
+        }
+
+        /// <summary>
+        /// SerializedObject のフィールドに参照を割り当てる。フィールドが見つからなければエラーログを出す
+        /// (View のフィールド名を変えたのにここを直し忘れた場合に気づけるように)。
+        /// </summary>
+        private static void Assign(SerializedObject so, string fieldName, Object value)
+        {
+            var property = so.FindProperty(fieldName);
+            if (property == null)
+            {
+                Debug.LogError($"[Abubu] {so.targetObject.GetType().Name} にフィールド \"{fieldName}\" が見つかりません。AbubuUiMenu のフィールド名定数を更新してください。");
+                return;
+            }
+            property.objectReferenceValue = value;
+        }
+
+        /// <summary>ラベル付きのトグルを作る</summary>
+        private static Toggle CreateToggle(Transform parent, string label, DefaultControls.Resources resources)
+        {
+            var toggleGo = DefaultControls.CreateToggle(resources);
+            toggleGo.name = label;
+            toggleGo.transform.SetParent(parent, false);
+            toggleGo.GetComponentInChildren<Text>().text = label;
+            toggleGo.AddComponent<LayoutElement>().preferredHeight = 32f;
+            var toggle = toggleGo.GetComponent<Toggle>();
+            toggle.isOn = false;
+            return toggle;
         }
 
         /// <summary>
@@ -194,42 +236,128 @@ namespace Abubu.Editor
         }
 
         /// <summary>
-        /// パネルの配置先 Canvas を決める。
-        /// 優先順: 選択中オブジェクトの親 Canvas → シーン内の既存 Canvas → 新規作成。
-        /// 新規作成時は、シーンに EventSystem が無ければ一緒に作る。
+        /// パネルの配置先 Canvas を決める (<see cref="FindOrCreateCanvas(GameObject)"/> を選択中のオブジェクトで呼ぶ)。
         /// </summary>
-        public static Canvas FindOrCreateCanvas()
+        public static Canvas FindOrCreateCanvas() => FindOrCreateCanvas(Selection.activeGameObject);
+
+        /// <summary>
+        /// パネルの配置先 Canvas を決める。
+        /// 優先順: <paramref name="context"/> の親 Canvas → (Prefab 編集中なら) Prefab 内の Canvas → シーン内の画面用 Canvas
+        /// (World Space 以外のルート Canvas) → 新規作成。
+        /// シーンに EventSystem が無ければ (Canvas が既にあっても) 一緒に作る。Prefab 編集中は EventSystem を作らない。
+        /// </summary>
+        /// <param name="context">基準にするオブジェクト (右クリックしたオブジェクトなど)。null 可</param>
+        public static Canvas FindOrCreateCanvas(GameObject context)
         {
-            if (Selection.activeGameObject != null)
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+
+            if (context != null && (prefabStage == null || prefabStage.IsPartOfPrefabContents(context)))
             {
-                var selected = Selection.activeGameObject.GetComponentInParent<Canvas>();
+                var selected = context.GetComponentInParent<Canvas>();
                 if (selected != null) return selected;
             }
 
-            var canvas = Object.FindAnyObjectByType<Canvas>();
-            if (canvas != null) return canvas;
+            if (prefabStage != null)
+            {
+                var root = prefabStage.prefabContentsRoot;
+                var inPrefab = FindScreenCanvas(root.GetComponentsInChildren<Canvas>(true));
+                if (inPrefab != null) return inPrefab;
+                // Prefab 内に Canvas が無ければ、Prefab のルートの下に作る
+                var created = CreateCanvas();
+                GameObjectUtility.SetParentAndAlign(created.gameObject, root);
+                return created;
+            }
 
-            // 1920x1080 基準で画面サイズに合わせて拡縮する Canvas
+            EnsureEventSystem();
+            var canvas = FindScreenCanvas(Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+            return canvas != null ? canvas : CreateCanvas();
+        }
+
+        /// <summary>画面に重ねる (World Space 以外の) ルート Canvas を探す。無ければ null</summary>
+        private static Canvas FindScreenCanvas(Canvas[] canvases)
+        {
+            Canvas fallback = null;
+            foreach (var canvas in canvases)
+            {
+                if (canvas == null || canvas.renderMode == RenderMode.WorldSpace) continue;
+                if (canvas.isRootCanvas) return canvas;
+                fallback ??= canvas;
+            }
+            return fallback;
+        }
+
+        /// <summary>1920x1080 基準で画面サイズに合わせて拡縮する Canvas を作る (Undo 対応)</summary>
+        private static Canvas CreateCanvas()
+        {
             var go = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            canvas = go.GetComponent<Canvas>();
+            StageUtility.PlaceGameObjectInCurrentStage(go);
+            var canvas = go.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = go.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             Undo.RegisterCreatedObjectUndo(go, "Create Canvas");
-
-            // EventSystem が無いと UI がクリックに反応しない
-            if (Object.FindAnyObjectByType<EventSystem>() == null)
-            {
-                var es = new GameObject("EventSystem", typeof(EventSystem));
-                // Input System / 旧 Input のどちらでも動くモジュールを付ける
-                var moduleType = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem")
-                                 ?? typeof(StandaloneInputModule);
-                es.AddComponent(moduleType);
-                Undo.RegisterCreatedObjectUndo(es, "Create EventSystem");
-            }
-
             return canvas;
+        }
+
+        /// <summary>
+        /// シーンに EventSystem が無ければ作る (EventSystem が無いと UI がクリック・ゲームパッドに反応しない)。
+        /// Input System があれば InputSystemUIInputModule を付け、プロジェクト共通の Input Actions (InputSystem.actions) に
+        /// UI マップがあればそれを使う (キー割り当ての変更が UI 操作にも効くように)。無ければ StandaloneInputModule。
+        /// </summary>
+        /// <returns>既存または作成した EventSystem</returns>
+        public static EventSystem EnsureEventSystem()
+        {
+            var existing = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
+            if (existing != null) return existing;
+
+            var go = new GameObject("EventSystem", typeof(EventSystem));
+            var moduleType = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem");
+            if (moduleType != null)
+            {
+                var module = go.AddComponent(moduleType);
+                AssignProjectWideActions(module);
+            }
+            else
+            {
+                go.AddComponent<StandaloneInputModule>();
+            }
+            Undo.RegisterCreatedObjectUndo(go, "Create EventSystem");
+            return go.GetComponent<EventSystem>();
+        }
+
+        /// <summary>
+        /// InputSystemUIInputModule.actionsAsset に InputSystem.actions (Project-wide Actions) を設定する。
+        /// UI マップが無い場合は、モジュール既定のアクション (DefaultInputActions) のままにする。
+        /// Abubu.Editor は Input System に依存しないので、リフレクションで設定する。
+        /// </summary>
+        private static void AssignProjectWideActions(Component module)
+        {
+            var inputSystem = System.Type.GetType("UnityEngine.InputSystem.InputSystem, Unity.InputSystem");
+            var actions = inputSystem?.GetProperty("actions", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as ScriptableObject;
+            if (actions == null) return;
+
+            var findMap = actions.GetType().GetMethod("FindActionMap", new[] { typeof(string), typeof(bool) });
+            if (findMap == null || findMap.Invoke(actions, new object[] { "UI", false }) == null) return;
+
+            var property = module.GetType().GetProperty("actionsAsset", BindingFlags.Public | BindingFlags.Instance);
+            if (property == null || !property.CanWrite) return;
+            property.SetValue(module, actions);
+            EditorUtility.SetDirty(module);
+        }
+
+        /// <summary>
+        /// ゲームパッド・キーボード操作用の部品をパネルに付ける: 表示時に最初の項目を選択する UiInitialSelection と、
+        /// ScrollRect があれば選択した項目までスクロールする UiScrollToSelection
+        /// </summary>
+        public static void AddNavigationHelpers(GameObject panel)
+        {
+            if (panel == null) return;
+            if (panel.GetComponent<UiInitialSelection>() == null) panel.AddComponent<UiInitialSelection>();
+            foreach (var scroll in panel.GetComponentsInChildren<ScrollRect>(true))
+            {
+                if (scroll.GetComponent<UiScrollToSelection>() == null) scroll.gameObject.AddComponent<UiScrollToSelection>();
+            }
         }
 
         /// <summary>

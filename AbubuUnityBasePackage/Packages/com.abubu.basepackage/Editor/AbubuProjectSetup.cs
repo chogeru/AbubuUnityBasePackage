@@ -10,7 +10,7 @@ namespace Abubu.Editor
 {
     /// <summary>
     /// Tools > Abubu > Setup Project
-    /// AbubuSettings / SoundLibrary / EffectLibrary / LocalizationTable と、AbubuInstaller 入りの Resources/ProjectContext.prefab を生成する。
+    /// AbubuSettings / SoundLibrary / EffectLibrary / AbubuLocalizationTable と、AbubuInstaller 入りの Resources/ProjectContext.prefab を生成する。
     /// 既に ProjectContext がある場合は AbubuInstaller を追加するだけ (既存の Installer は保持)。
     /// </summary>
     /// <remarks>
@@ -62,8 +62,8 @@ namespace Abubu.Editor
             // 各ライブラリと設定アセットを用意し、設定側の参照が空ならライブラリを割り当てる
             var library = LoadOrCreate<SoundLibrary>(LibraryPath);
             var effectLibrary = LoadOrCreate<EffectLibrary>(EffectLibraryPath);
-            var isNewTable = AssetDatabase.LoadAssetAtPath<LocalizationTable>(LocalizationTablePath) == null;
-            var localizationTable = LoadOrCreate<LocalizationTable>(LocalizationTablePath);
+            var isNewTable = AssetDatabase.LoadAssetAtPath<AbubuLocalizationTable>(LocalizationTablePath) == null;
+            var localizationTable = LoadOrCreate<AbubuLocalizationTable>(LocalizationTablePath);
             if (isNewTable) AddBuiltInStrings(localizationTable);
             var settings = LoadOrCreate<AbubuSettings>(SettingsPath);
             if (settings.Sound.Library == null) settings.Sound.Library = library;
@@ -188,7 +188,7 @@ namespace Abubu.Editor
         }
 
         /// <summary>パッケージ同梱の文言 (AbubuBuiltInStrings.csv) を翻訳テーブルの Csv Sources に追加する</summary>
-        private static void AddBuiltInStrings(LocalizationTable table)
+        private static void AddBuiltInStrings(AbubuLocalizationTable table)
         {
             var builtIn = AssetDatabase.LoadAssetAtPath<TextAsset>(BuiltInStringsPath);
             if (builtIn == null || table.CsvSources.Contains(builtIn)) return;

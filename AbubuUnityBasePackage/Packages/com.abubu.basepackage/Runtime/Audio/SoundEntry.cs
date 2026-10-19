@@ -20,6 +20,13 @@ namespace Abubu.Audio
     /// <summary>
     /// SoundLibrary に登録する1サウンド分の定義。
     /// Clips を複数登録すると再生のたびにランダムで1つ選ばれる (足音などのバリエーション用。AvoidRepeat で連続を避ける)。
+    /// Clips の代わりに Address を指定すると、Clip は必要になったときに IAudioClipProvider が読み込む
+    /// (SoundSettings.UseAddressableClips。ライブラリ全体の Clip が起動時から常駐するのを避けられる)。
+    /// <code>
+    /// new SoundEntry { Key = "jump", Clips = new[] { jumpClip } };                         // 直接参照 (常駐)
+    /// new SoundEntry { Key = "boss_bgm", Address = "Audio/Bgm/Boss" };                    // 必要なときに読み込む
+    /// new SoundEntry { Key = "hero_001", Address = "Voice/hero_001", SubtitleKey = "sub.hero_001" }; // 字幕キー付きボイス
+    /// </code>
     /// </summary>
     [Serializable]
     public sealed class SoundEntry
@@ -28,6 +35,13 @@ namespace Abubu.Audio
         public string Key;
 
         public AudioClip[] Clips = Array.Empty<AudioClip>();
+
+        [Tooltip("Clips の代わりに使う読み込み先 (Addressables のアドレス等)。Clips が設定されていればそちらを優先する。" +
+                 "使われるのは対応する IAudioClipProvider が有効なとき (SoundSettings.UseAddressableClips) のみ")]
+        public string Address;
+
+        [Tooltip("字幕・アクセシビリティ表示用のキー (主にボイス)。空欄なら Key をそのまま使う")]
+        public string SubtitleKey;
 
         [Range(0f, 1f)] public float Volume = 1f;
 
@@ -49,6 +63,12 @@ namespace Abubu.Audio
         [NonSerialized] private int _lastIndex = -1;
 
         public bool HasClip => Clips != null && Clips.Length > 0;
+        public bool HasAddress => !string.IsNullOrEmpty(Address);
+        /// <summary>Clip の直接参照か Address のどちらかが設定されている (再生できる可能性がある)</summary>
+        public bool HasSource => HasClip || HasAddress;
+
+        /// <summary>字幕に使うキー。SubtitleKey が空なら Key</summary>
+        public string GetSubtitleKey() => string.IsNullOrEmpty(SubtitleKey) ? Key : SubtitleKey;
 
         public AudioClip PickClip()
         {

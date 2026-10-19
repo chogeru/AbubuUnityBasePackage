@@ -1,5 +1,5 @@
 using System;
-using Abubu.Input;
+using Abubu.Inputs;
 using Abubu.Localization;
 using Cysharp.Threading.Tasks;
 using R3;

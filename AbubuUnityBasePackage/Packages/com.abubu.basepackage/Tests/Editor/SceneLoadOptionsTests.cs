@@ -1,4 +1,4 @@
-using Abubu.Scene;
+using Abubu.SceneFlow;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -33,6 +33,22 @@ namespace Abubu.Tests
             Assert.That(r.FadeColor, Is.EqualTo(Color.white));
             Assert.That(r.FadeInDuration, Is.EqualTo(0.4f));
             Assert.That(r.MinimumLoadingTime, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void FadeTransition_CreatesNothingUntilFirstFade()
+        {
+            var transition = new FadeTransition(Settings());
+            try
+            {
+                // 使われないうちは Canvas を生成しない (差し替えた場合や VR で余計なオブジェクトを作らない)
+                Assert.That(GameObject.Find("[Abubu.SceneFade]"), Is.Null);
+            }
+            finally
+            {
+                transition.Dispose();
+                transition.Dispose(); // 二重に呼んでも安全
+            }
         }
 
         [Test]
