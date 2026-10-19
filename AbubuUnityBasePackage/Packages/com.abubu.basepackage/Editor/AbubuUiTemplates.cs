@@ -49,23 +49,26 @@ namespace Abubu.Editor
             }
         }
 
-        /// <summary>AbubuSettings.Ui → Resources/AbubuUiSettings → 新規作成 の順に探し、AbubuSettings.Ui が空なら設定する</summary>
-        private static AbubuUiSettings FindOrCreateUiSettings(string folder)
+        /// <summary>
+        /// AbubuSettings > Module Settings → Resources/AbubuUiSettings → 新規作成 の順に探し、Module Settings に無ければ追加する
+        /// </summary>
+        internal static AbubuUiSettings FindOrCreateUiSettings(string folder)
         {
             var abubuSettings = AssetDatabase.FindAssets("t:AbubuSettings")
                 .Select(guid => AssetDatabase.LoadAssetAtPath<AbubuSettings>(AssetDatabase.GUIDToAssetPath(guid)))
                 .FirstOrDefault(s => s != null);
-            var uiSettings = abubuSettings != null ? abubuSettings.Ui : null;
+            var uiSettings = abubuSettings != null ? abubuSettings.ModuleSettings.OfType<AbubuUiSettings>().FirstOrDefault() : null;
             if (uiSettings == null) uiSettings = Resources.Load<AbubuUiSettings>(AbubuUiSettings.ResourcePath);
             if (uiSettings == null)
             {
+                EnsureFolder(folder);
                 uiSettings = ScriptableObject.CreateInstance<AbubuUiSettings>();
                 AssetDatabase.CreateAsset(uiSettings, folder + "/AbubuUiSettings.asset");
             }
 
-            if (abubuSettings != null && abubuSettings.Ui == null)
+            if (abubuSettings != null && !abubuSettings.ModuleSettings.Contains(uiSettings))
             {
-                abubuSettings.Ui = uiSettings;
+                abubuSettings.ModuleSettings.Add(uiSettings);
                 EditorUtility.SetDirty(abubuSettings);
             }
             return uiSettings;

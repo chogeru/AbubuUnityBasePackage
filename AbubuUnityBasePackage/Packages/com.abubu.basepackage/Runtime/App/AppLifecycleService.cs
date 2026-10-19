@@ -62,6 +62,16 @@ namespace Abubu.App
     }
 
     /// <summary>
+    /// 中断・終了の通知 (IAppSuspendHandler / IAppQuitHandler / OnSuspend / OnQuit の購読) がすべて終わったあとに呼ばれる。
+    /// 非同期で始まった書き込みを最後に待つ (セーブの Flush など) のに使う
+    /// </summary>
+    public interface IAppSuspendFinalizer
+    {
+        /// <param name="quitting">終了時なら true</param>
+        void OnFinalizeSuspend(bool quitting);
+    }
+
+    /// <summary>
     /// アプリの中断・復帰・終了の通知。
     /// モバイルはバックグラウンドに回ったあと終了処理なしで落とされることがあるため、保存は <see cref="OnSuspend"/> で行う。
     /// <code>
@@ -91,6 +101,7 @@ namespace Abubu.App
         private readonly AppSettings _settings;
         private readonly List<IAppSuspendHandler> _handlers;
         private readonly List<IAppQuitHandler> _quitHandlers;
+        private readonly List<IAppSuspendFinalizer> _finalizers;
         private readonly SuspendTrigger _triggers;
         private readonly ReactiveProperty<bool> _isFocused = new(true);
         private readonly ReactiveProperty<bool> _isSuspended = new(false);
@@ -107,9 +118,10 @@ namespace Abubu.App
         public Observable<Unit> OnQuit => _onQuit;
 
         public AppLifecycleService([InjectOptional] AppSettings settings = null, [InjectOptional] List<IAppSuspendHandler> handlers = null,
-            [InjectOptional] List<IAppQuitHandler> quitHandlers = null)
+            [InjectOptional] List<IAppQuitHandler> quitHandlers = null, [InjectOptional] List<IAppSuspendFinalizer> finalizers = null)
         {
             _quitHandlers = quitHandlers ?? new List<IAppQuitHandler>();
+            _finalizers = finalizers ?? new List<IAppSuspendFinalizer>();
             _settings = settings ?? new AppSettings();
             _handlers = handlers ?? new List<IAppSuspendHandler>();
             _triggers = _settings.SuspendTriggers;
@@ -164,6 +176,7 @@ namespace Abubu.App
                 }
             }
             _onQuit.OnNext(Unit.Default);
+            RunFinalizers(quitting: true);
         }
 
         /// <summary>中断の通知。モバイルではフォーカス喪失とバックグラウンド移行が続けて来るので、1 回にまとめる</summary>
@@ -185,6 +198,23 @@ namespace Abubu.App
                 }
             }
             _onSuspend.OnNext(Unit.Default);
+            // 終了時は OnQuit のあとにまとめて呼ぶ
+            if (!_quitting) RunFinalizers(quitting: false);
+        }
+
+        private void RunFinalizers(bool quitting)
+        {
+            foreach (var finalizer in _finalizers)
+            {
+                try
+                {
+                    finalizer.OnFinalizeSuspend(quitting);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
         }
 
         private void Resume()
@@ -222,11 +252,15 @@ namespace Abubu
     /// </summary>
     public static class AppLifecycle
     {
+        /// <summary>サービス本体。取得できない場合は null (警告を型ごとに 1 回出す)</summary>
         public static IAppLifecycle Service => AbubuServices.TryResolve<IAppLifecycle>();
 
-        public static Observable<Unit> OnSuspend => Service?.OnSuspend ?? Observable.Empty<Unit>();
-        public static Observable<Unit> OnResume => Service?.OnResume ?? Observable.Empty<Unit>();
-        public static Observable<Unit> OnQuit => Service?.OnQuit ?? Observable.Empty<Unit>();
-        public static bool IsFocused => Service?.IsFocused.CurrentValue ?? true;
+        /// <summary>ショートカット内部用。取得できない場合は null で、エラーを型ごとに 1 回出す</summary>
+        private static IAppLifecycle Svc => AbubuServices.ResolveOrLogError<IAppLifecycle>();
+
+        public static Observable<Unit> OnSuspend => Svc?.OnSuspend ?? Observable.Empty<Unit>();
+        public static Observable<Unit> OnResume => Svc?.OnResume ?? Observable.Empty<Unit>();
+        public static Observable<Unit> OnQuit => Svc?.OnQuit ?? Observable.Empty<Unit>();
+        public static bool IsFocused => Svc?.IsFocused.CurrentValue ?? true;
     }
 }

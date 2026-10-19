@@ -19,14 +19,14 @@ namespace Abubu.Localization
         [SerializeField] private GameObject hideRoot;
 
         private ISubtitleService _subtitles;
-        private ILocalizationService _localization;
+        private ILocalizedFontService _fonts;
         private IDisposable _subscription;
 
         [Inject]
-        public void SetServices([InjectOptional] ISubtitleService subtitles, [InjectOptional] ILocalizationService localization)
+        public void SetServices([InjectOptional] ISubtitleService subtitles, [InjectOptional] ILocalizedFontService fonts)
         {
             _subtitles = subtitles;
-            _localization = localization;
+            _fonts = fonts;
             if (isActiveAndEnabled) Subscribe();
         }
 
@@ -49,7 +49,8 @@ namespace Abubu.Localization
 
         private void Apply(string text)
         {
-            var font = (_localization ?? Loc.Service)?.GetFont();
+            _fonts ??= AbubuServices.TryResolve<ILocalizedFontService>();
+            var font = _fonts?.GetFont();
             if (TryGetComponent<TMP_Text>(out var tmp))
             {
                 tmp.text = text ?? string.Empty;

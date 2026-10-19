@@ -27,10 +27,8 @@ namespace Abubu.UI
 
     public sealed class ToastService : IToastService, IDisposable
     {
-        private const float FadeInSeconds = 0.15f;
-        private const float FadeOutSeconds = 0.25f;
-
         private readonly AbubuUiSettings _settings;
+        private readonly IUiFontProvider _fonts;
         private readonly Queue<(string Message, float Duration)> _queue = new();
         private CancellationTokenSource _cts = new();
         private Canvas _canvas;
@@ -39,9 +37,10 @@ namespace Abubu.UI
         private UiToast _current;
         private bool _running;
 
-        public ToastService([InjectOptional] AbubuUiSettings settings = null)
+        public ToastService([InjectOptional] AbubuUiSettings settings = null, [InjectOptional] IUiFontProvider fonts = null)
         {
-            _settings = settings != null ? settings : ScriptableObject.CreateInstance<AbubuUiSettings>();
+            _settings = settings != null ? settings : AbubuUiSettings.Default;
+            _fonts = fonts ?? new SettingsUiFontProvider(_settings);
         }
 
         public void Show(string message, float? duration = null)
@@ -70,13 +69,15 @@ namespace Abubu.UI
                 while (_queue.Count > 0 && !ct.IsCancellationRequested)
                 {
                     var (message, duration) = _queue.Dequeue();
-                    _current = Object.Instantiate(GetTemplate(), EnsureCanvas().transform, false);
+                    var usesDefault = _settings.ToastPrefab == null;
+                    _current = Object.Instantiate(GetTemplate(), UiUtility.ContentRoot(EnsureCanvas()), false);
+                    if (usesDefault) UiUtility.ApplyFont(_current.gameObject, _fonts);
                     _current.Setup(message);
                     var group = _current.CanvasGroup;
 
-                    await FadeAsync(group, 0f, 1f, FadeInSeconds, ct);
+                    await FadeAsync(group, 0f, 1f, _settings.ToastFadeInSeconds, ct);
                     await UniTask.Delay(TimeSpan.FromSeconds(Mathf.Max(0f, duration)), ignoreTimeScale: true, cancellationToken: ct);
-                    await FadeAsync(group, 1f, 0f, FadeOutSeconds, ct);
+                    await FadeAsync(group, 1f, 0f, _settings.ToastFadeOutSeconds, ct);
 
                     Object.Destroy(_current.gameObject);
                     _current = null;
@@ -118,7 +119,7 @@ namespace Abubu.UI
             _templateHolder = new GameObject("[Abubu.UI.ToastTemplate]");
             _templateHolder.SetActive(false);
             Object.DontDestroyOnLoad(_templateHolder);
-            return _defaultTemplate = UiDefaultWidgets.CreateToast(_templateHolder.transform);
+            return _defaultTemplate = UiDefaultWidgets.CreateToast(_templateHolder.transform, _settings.WidgetStyle);
         }
 
         public void Dispose()

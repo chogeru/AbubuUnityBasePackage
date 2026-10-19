@@ -206,15 +206,14 @@ namespace Abubu.Tests
             {
                 ["en"] = new(), ["ja"] = new(), ["zh-Hant-TW"] = new(),
             });
-            var settings = Settings();
-            settings.Fonts = new List<LocalizationFont> { defaultFont, jaFont, hantFont };
-            using var loc = new LocalizationService(source, settings);
+            using var loc = new LocalizationService(source, Settings());
+            var fonts = new LocalizedFontService(loc, new List<LocalizationFont> { defaultFont, jaFont, hantFont });
 
-            Assert.That(loc.GetFont(), Is.SameAs(defaultFont));
+            Assert.That(fonts.GetFont(), Is.SameAs(defaultFont));
             loc.SetLanguage("ja");
-            Assert.That(loc.GetFont(), Is.SameAs(jaFont));
+            Assert.That(fonts.GetFont(), Is.SameAs(jaFont));
             loc.SetLanguage("zh-Hant-TW");
-            Assert.That(loc.GetFont(), Is.SameAs(hantFont));
+            Assert.That(fonts.GetFont(), Is.SameAs(hantFont));
         }
 
         [Test]
@@ -227,9 +226,8 @@ namespace Abubu.Tests
                 ["en"] = new() { ["start"] = "Start" },
                 ["ja"] = new() { ["start"] = "スタート" },
             });
-            var settings = Settings();
-            settings.Fonts = new List<LocalizationFont> { new() { Language = "ja", Font = japanese } };
-            using var loc = new LocalizationService(source, settings);
+            using var loc = new LocalizationService(source, Settings());
+            var fonts = new LocalizedFontService(loc, new List<LocalizationFont> { new() { Language = "ja", Font = japanese } });
 
             var go = new GameObject("Label", typeof(RectTransform));
             try
@@ -239,6 +237,7 @@ namespace Abubu.Tests
                 var localized = go.AddComponent<LocalizedText>();
                 // 先にサービスを渡す (Key の設定で表示が更新されるとき、未設定だと Loc.Service = 本物の ProjectContext を使ってしまう)
                 localized.SetService(loc);
+                localized.SetFontService(fonts);
                 localized.Key = "start";
                 localized.Refresh();
                 Assert.That(text.text, Is.EqualTo("Start"));

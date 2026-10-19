@@ -48,6 +48,9 @@ namespace Abubu.UI
         /// <summary>一番手前のポップアップ (無ければ null)</summary>
         GameObject Current { get; }
 
+        /// <summary>ポップアップが開いた・閉じたとき</summary>
+        Observable<Unit> Changed { get; }
+
         /// <summary>プレハブをポップアップ用 Canvas の下に生成して一番手前に表示する</summary>
         GameObject Push(GameObject prefab);
 
@@ -77,11 +80,17 @@ namespace Abubu.UI
             public UnityScene Scene;
             /// <summary>開く前に選択されていたもの。閉じたときに選択を戻す</summary>
             public GameObject PreviousSelection;
+            /// <summary>上にポップアップが重なっている間、操作できなくするための CanvasGroup (重なる前の interactable を覚えておく)</summary>
+            public CanvasGroup Group;
+            public bool GroupWasInteractable = true;
         }
 
         private readonly AbubuUiSettings _settings;
         private readonly IPauseService _pause;
         private readonly IUiFactory _factory;
+        private readonly UiEventSystemProvider _eventSystems;
+        private readonly IUiInputModeSource _input;
+        private readonly Subject<Unit> _changed = new();
         private readonly UiTransitionRunner _transitions = new();
         private readonly List<Entry> _stack = new();
         private readonly ReactiveProperty<int> _count = new(0);
@@ -91,6 +100,7 @@ namespace Abubu.UI
         private bool _disposing;
 
         public ReadOnlyReactiveProperty<int> Count => _count;
+        public Observable<Unit> Changed => _changed;
 
         public GameObject Current
         {
@@ -103,11 +113,14 @@ namespace Abubu.UI
 
         /// <param name="factory">インスタンスの生成方法。null なら注入なしで Instantiate する (テスト用)</param>
         public PopupService([InjectOptional] IPauseService pause = null, [InjectOptional] AbubuUiSettings settings = null,
-            [InjectOptional] IUiFactory factory = null)
+            [InjectOptional] IUiFactory factory = null, [InjectOptional] UiEventSystemProvider eventSystems = null,
+            [InjectOptional] IUiInputModeSource input = null)
         {
             _pause = pause;
-            _settings = settings != null ? settings : ScriptableObject.CreateInstance<AbubuUiSettings>();
+            _settings = settings != null ? settings : AbubuUiSettings.Default;
             _factory = factory ?? new ContainerUiFactory();
+            _eventSystems = eventSystems;
+            _input = input;
             SceneManager.sceneUnloaded += OnSceneUnloaded;
         }
 
@@ -127,13 +140,14 @@ namespace Abubu.UI
             if (prefab == null) throw new ArgumentNullException(nameof(prefab));
 
             PurgeDestroyed();
-            WarnIfNoEventSystem();
+            if (_eventSystems != null) _eventSystems.Ensure();
+            else WarnIfNoEventSystem();
             var canvas = EnsureCanvas();
             var backdrop = CreateBackdrop(canvas.transform);
             GameObject popup;
             try
             {
-                popup = _factory.Create(prefab, canvas.transform);
+                popup = _factory.Create(prefab, UiUtility.ContentRoot(canvas));
                 if (popup == null) throw new InvalidOperationException($"IUiFactory が {prefab.name} のインスタンスを返しませんでした。");
             }
             catch
@@ -151,8 +165,12 @@ namespace Abubu.UI
                 Scene = SceneManager.GetActiveScene(),
                 PreviousSelection = UiInitialSelection.Current,
             };
+            // 下のポップアップは、上に重なっている間ゲームパッドのナビゲーションでも選べないようにする
+            if (_stack.Count > 0) SetInteractable(_stack[^1], false);
             _stack.Add(entry);
             UiDestroyNotifier.Attach(popup, OnPopupDestroyed);
+            // 選択をポップアップの中に閉じ込める (裏の画面のボタンへ移らないように)
+            if (!popup.TryGetComponent<UiFocusScope>(out _)) popup.AddComponent<UiFocusScope>();
             UpdateState();
 
             foreach (var receiver in popup.GetComponents<IPopup>())
@@ -167,7 +185,7 @@ namespace Abubu.UI
                 }
             }
 
-            UiInitialSelection.Apply(popup, _settings.SelectFirstOnOpen);
+            UiInitialSelection.ApplyOnOpen(popup, _settings.SelectOnOpen, _input);
             _transitions.Show(popup);
             return popup;
         }
@@ -220,6 +238,7 @@ namespace Abubu.UI
             PopAll();
             _disposed = true;
             _count.Dispose();
+            _changed.Dispose();
             if (_canvas != null) Object.Destroy(_canvas.gameObject);
         }
 
@@ -235,6 +254,7 @@ namespace Abubu.UI
         private void Remove(Entry entry, bool restoreSelection)
         {
             if (!_stack.Remove(entry)) return;
+            RestoreTopInteractable();
             UpdateState();
 
             if (entry.Popup != null)
@@ -275,7 +295,29 @@ namespace Abubu.UI
 
             _stack.Remove(entry);
             if (entry.Backdrop != null) Object.Destroy(entry.Backdrop);
+            RestoreTopInteractable();
             UpdateState();
+        }
+
+        /// <summary>重なっている間 interactable を外す。元の値を覚えておき、一番手前に戻ったときに戻す</summary>
+        private static void SetInteractable(Entry entry, bool interactable)
+        {
+            if (entry.Popup == null) return;
+            if (!interactable)
+            {
+                if (!entry.Popup.TryGetComponent(out entry.Group)) entry.Group = entry.Popup.AddComponent<CanvasGroup>();
+                entry.GroupWasInteractable = entry.Group.interactable;
+                entry.Group.interactable = false;
+            }
+            else if (entry.Group != null)
+            {
+                entry.Group.interactable = entry.GroupWasInteractable;
+            }
+        }
+
+        private void RestoreTopInteractable()
+        {
+            if (_stack.Count > 0) SetInteractable(_stack[^1], true);
         }
 
         /// <summary>
@@ -293,13 +335,18 @@ namespace Abubu.UI
                 removed = true;
             }
 
-            if (removed) UpdateState();
+            if (removed)
+            {
+                RestoreTopInteractable();
+                UpdateState();
+            }
         }
 
         private void UpdateState()
         {
             if (_disposed) return;
             _count.Value = _stack.Count;
+            _changed.OnNext(Unit.Default);
             if (!_settings.PauseWhileOpen || _pause == null) return;
 
             if (_stack.Count > 0) _pause.Pause(this);
@@ -373,10 +420,12 @@ namespace Abubu.UI
             if (!container.HasBinding<IScreenService>()) container.BindInterfacesTo<ScreenService>().AsSingle();
             if (!container.HasBinding<IDialogService>()) container.BindInterfacesTo<DialogService>().AsSingle();
             if (!container.HasBinding<IToastService>()) container.BindInterfacesTo<ToastService>().AsSingle();
+            if (!container.HasBinding<UiEventSystemProvider>()) container.BindInterfacesAndSelfTo<UiEventSystemProvider>().AsSingle();
+            if (!container.HasBinding<IUiPromptService>()) container.BindInterfacesTo<UiPromptService>().AsSingle();
         }
 
         /// <summary>
-        /// UI の設定を登録する。AbubuSettings.Ui (登録済み) → Resources/AbubuUiSettings の順。どちらも無ければ登録せず、各サービスが既定値を使う
+        /// UI の設定を登録する。AbubuSettings > Module Settings (登録済み) → Resources/AbubuUiSettings の順。どちらも無ければ登録せず、各サービスが既定値を使う
         /// </summary>
         public static void BindSettings(DiContainer container)
         {
@@ -389,6 +438,7 @@ namespace Abubu.UI
 
 namespace Abubu
 {
+    using System;
     using System.Threading;
     using Abubu.UI;
     using Cysharp.Threading.Tasks;
@@ -404,26 +454,37 @@ namespace Abubu
     /// </summary>
     public static class Popups
     {
+        /// <summary>サービス本体。取得できない場合は null (警告を型ごとに 1 回出す)</summary>
         public static IPopupService Service => AbubuServices.TryResolve<IPopupService>();
 
-        public static GameObject Push(GameObject prefab) => Service?.Push(prefab);
-        public static T Push<T>(T prefab) where T : Component => Service?.Push(prefab);
-        public static bool Pop() => Service?.Pop() ?? false;
-        public static bool Close(GameObject popup) => Service?.Close(popup) ?? false;
-        public static void PopAll() => Service?.PopAll();
-        public static int Count => Service?.Count.CurrentValue ?? 0;
-        public static GameObject Current => Service?.Current;
+        /// <summary>ショートカット内部用。取得できない場合は null で、エラーを型ごとに 1 回出す</summary>
+        private static IPopupService Svc => AbubuServices.ResolveOrLogError<IPopupService>();
 
-        /// <summary>OK / Cancel の確認ダイアログ。OK なら true</summary>
+        public static GameObject Push(GameObject prefab) => Svc?.Push(prefab);
+        public static T Push<T>(T prefab) where T : Component => Svc?.Push(prefab);
+        public static bool Pop() => Svc?.Pop() ?? false;
+        public static bool Close(GameObject popup) => Svc?.Close(popup) ?? false;
+        public static void PopAll() => Svc?.PopAll();
+        public static int Count => Svc?.Count.CurrentValue ?? 0;
+        public static GameObject Current => Svc?.Current;
+
+        /// <summary>
+        /// OK / Cancel の確認ダイアログ。OK なら true。
+        /// ダイアログを出せない (UI モジュールが無い・無効) 場合は、「キャンセルされた」と区別できるよう例外を投げる
+        /// </summary>
         public static UniTask<bool> Confirm(string message, string title = null, string ok = null, string cancel = null,
             CancellationToken ct = default) =>
-            AbubuServices.TryResolve<IDialogService>()?.ConfirmAsync(message, title, ok, cancel, ct) ?? UniTask.FromResult(false);
+            RequireDialogs().ConfirmAsync(message, title, ok, cancel, ct);
 
-        /// <summary>OK だけのダイアログ。閉じられるまで待つ</summary>
+        /// <summary>OK だけのダイアログ。閉じられるまで待つ。ダイアログを出せない場合は例外を投げる</summary>
         public static UniTask Alert(string message, string title = null, string ok = null, CancellationToken ct = default) =>
-            AbubuServices.TryResolve<IDialogService>()?.AlertAsync(message, title, ok, ct) ?? UniTask.CompletedTask;
+            RequireDialogs().AlertAsync(message, title, ok, ct);
 
         /// <summary>数秒で消える短い通知</summary>
-        public static void Toast(string message, float? duration = null) => AbubuServices.TryResolve<IToastService>()?.Show(message, duration);
+        public static void Toast(string message, float? duration = null) => AbubuServices.ResolveOrLogError<IToastService>()?.Show(message, duration);
+
+        private static IDialogService RequireDialogs() =>
+            AbubuServices.ResolveOrLogError<IDialogService>()
+            ?? throw new InvalidOperationException("[Abubu.UI] IDialogService が見つからないため、ダイアログを出せません。UI モジュールが有効か確認してください。");
     }
 }

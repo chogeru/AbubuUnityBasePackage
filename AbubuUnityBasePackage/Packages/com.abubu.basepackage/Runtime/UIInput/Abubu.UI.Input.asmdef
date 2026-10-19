@@ -6,7 +6,12 @@
         "Abubu.UI",
         "Abubu.Input",
         "R3.Unity",
-        "Zenject"
+        "Zenject",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "UniTask",
+        "Abubu.Debugging"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -21,10 +26,26 @@
         "ABUBU_DEPS_ZENJECT"
     ],
     "versionDefines": [
-        { "name": "com.unity.inputsystem", "expression": "", "define": "ABUBU_INPUTSYSTEM" },
-        { "name": "com.cysharp.unitask", "expression": "", "define": "ABUBU_DEPS_UNITASK" },
-        { "name": "com.cysharp.r3", "expression": "", "define": "ABUBU_DEPS_R3" },
-        { "name": "com.svermeulen.extenject", "expression": "", "define": "ABUBU_DEPS_ZENJECT" }
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "ABUBU_INPUTSYSTEM"
+        },
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
     ],
     "noEngineReferences": false
 }

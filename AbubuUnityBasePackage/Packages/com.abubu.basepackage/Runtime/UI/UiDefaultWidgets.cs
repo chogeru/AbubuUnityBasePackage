@@ -13,19 +13,16 @@ namespace Abubu.UI
     /// </remarks>
     public static class UiDefaultWidgets
     {
-        private static readonly Color PanelColor = new(0.12f, 0.12f, 0.14f, 0.96f);
-        private static readonly Color ButtonColor = new(0.25f, 0.25f, 0.3f, 1f);
-        private static readonly Color AccentColor = new(0.2f, 0.45f, 0.85f, 1f);
-
         /// <summary>確認ダイアログ (タイトル・本文・OK / Cancel) を組み立てる</summary>
-        public static UiConfirmDialog CreateConfirmDialog(Transform parent = null)
+        public static UiConfirmDialog CreateConfirmDialog(Transform parent = null, UiWidgetStyle style = null)
         {
+            style ??= new UiWidgetStyle();
             var root = CreateRect("ConfirmDialog", parent);
             var rect = (RectTransform)root.transform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(720f, 0f);
+            rect.sizeDelta = new Vector2(style.DialogWidth, 0f);
 
-            root.AddComponent<Image>().color = PanelColor;
+            root.AddComponent<Image>().color = style.PanelColor;
             var layout = root.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(40, 40, 32, 32);
             layout.spacing = 24f;
@@ -34,8 +31,8 @@ namespace Abubu.UI
             layout.childForceExpandHeight = false;
             root.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var title = CreateText("Title", root.transform, 40, FontStyle.Bold);
-            var message = CreateText("Message", root.transform, 30, FontStyle.Normal);
+            var title = CreateText("Title", root.transform, style.TitleFontSize, FontStyle.Bold, style.TextColor);
+            var message = CreateText("Message", root.transform, style.BodyFontSize, FontStyle.Normal, style.TextColor);
 
             var buttons = CreateRect("Buttons", root.transform);
             var row = buttons.AddComponent<HorizontalLayoutGroup>();
@@ -46,19 +43,20 @@ namespace Abubu.UI
             row.childForceExpandWidth = true;
             buttons.AddComponent<LayoutElement>().preferredHeight = 80f;
 
-            var (cancel, cancelLabel) = CreateButton("CancelButton", buttons.transform, ButtonColor);
-            var (ok, okLabel) = CreateButton("OkButton", buttons.transform, AccentColor);
+            var (cancel, cancelLabel) = CreateButton("CancelButton", buttons.transform, style.ButtonColor, style);
+            var (ok, okLabel) = CreateButton("OkButton", buttons.transform, style.AccentColor, style);
 
             var dialog = root.AddComponent<UiConfirmDialog>();
             dialog.Bind(title, message, ok, okLabel, cancel, cancelLabel);
-            // ゲームパッドで開いたときは OK を選ぶ
-            root.AddComponent<UiInitialSelection>().Target = ok;
+            // ゲームパッドで開いたときは Cancel を選ぶ (連打で確定しないように。UiConfirmDialog.Setup で設定に合わせて選び直す)
+            root.AddComponent<UiInitialSelection>().Target = cancel;
             return dialog;
         }
 
         /// <summary>トースト (画面下の短い通知) を組み立てる</summary>
-        public static UiToast CreateToast(Transform parent = null)
+        public static UiToast CreateToast(Transform parent = null, UiWidgetStyle style = null)
         {
+            style ??= new UiWidgetStyle();
             var root = CreateRect("Toast", parent);
             var rect = (RectTransform)root.transform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0f);
@@ -66,7 +64,7 @@ namespace Abubu.UI
             rect.anchoredPosition = new Vector2(0f, 120f);
 
             var image = root.AddComponent<Image>();
-            image.color = PanelColor;
+            image.color = style.PanelColor;
             image.raycastTarget = false;
             var layout = root.AddComponent<HorizontalLayoutGroup>();
             layout.padding = new RectOffset(40, 40, 20, 20);
@@ -80,7 +78,7 @@ namespace Abubu.UI
             group.blocksRaycasts = false;
             group.interactable = false;
 
-            var message = CreateText("Message", root.transform, 30, FontStyle.Normal);
+            var message = CreateText("Message", root.transform, style.BodyFontSize, FontStyle.Normal, style.TextColor);
             message.raycastTarget = false;
             var toast = root.AddComponent<UiToast>();
             toast.Bind(message);
@@ -94,27 +92,27 @@ namespace Abubu.UI
             return go;
         }
 
-        private static Text CreateText(string name, Transform parent, int size, FontStyle style)
+        private static Text CreateText(string name, Transform parent, int size, FontStyle style, Color color)
         {
             var text = CreateRect(name, parent).AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = size;
             text.fontStyle = style;
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = Color.white;
+            text.color = color;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             return text;
         }
 
-        private static (Button, Text) CreateButton(string name, Transform parent, Color color)
+        private static (Button, Text) CreateButton(string name, Transform parent, Color color, UiWidgetStyle style)
         {
             var go = CreateRect(name, parent);
             var image = go.AddComponent<Image>();
             image.color = color;
             var button = go.AddComponent<Button>();
             button.targetGraphic = image;
-            var label = CreateText("Label", go.transform, 30, FontStyle.Bold);
+            var label = CreateText("Label", go.transform, style.BodyFontSize, FontStyle.Bold, style.TextColor);
             var labelRect = (RectTransform)label.transform;
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;

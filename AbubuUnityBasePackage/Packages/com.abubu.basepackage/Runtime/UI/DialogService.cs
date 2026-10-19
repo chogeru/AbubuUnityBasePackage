@@ -48,14 +48,17 @@ namespace Abubu.UI
         private readonly IPopupService _popups;
         private readonly AbubuUiSettings _settings;
         private readonly IDialogLabels _labels;
+        private readonly IUiFontProvider _fonts;
         private GameObject _templateHolder;
         private UiConfirmDialog _defaultTemplate;
 
-        public DialogService(IPopupService popups, [InjectOptional] AbubuUiSettings settings = null, [InjectOptional] IDialogLabels labels = null)
+        public DialogService(IPopupService popups, [InjectOptional] AbubuUiSettings settings = null, [InjectOptional] IDialogLabels labels = null,
+            [InjectOptional] IUiFontProvider fonts = null)
         {
             _popups = popups;
-            _settings = settings != null ? settings : ScriptableObject.CreateInstance<AbubuUiSettings>();
+            _settings = settings != null ? settings : AbubuUiSettings.Default;
             _labels = labels ?? new DialogLabels(_settings);
+            _fonts = fonts ?? new SettingsUiFontProvider(_settings);
         }
 
         public UniTask<bool> ConfirmAsync(string message, string title = null, string ok = null, string cancel = null, CancellationToken ct = default) =>
@@ -66,9 +69,11 @@ namespace Abubu.UI
 
         private async UniTask<bool> ShowAsync(string message, string title, string ok, string cancel, CancellationToken ct)
         {
+            var usesDefault = _settings.ConfirmDialogPrefab == null;
             var dialog = _popups.Push(GetTemplate());
             if (dialog == null) return false;
-            dialog.Setup(message, title, ok, cancel, _popups.Close);
+            if (usesDefault) UiUtility.ApplyFont(dialog.gameObject, _fonts);
+            dialog.Setup(message, title, ok, cancel, _popups.Close, _settings.ConfirmDefaultButton);
 
             try
             {
@@ -90,7 +95,7 @@ namespace Abubu.UI
             _templateHolder = new GameObject("[Abubu.UI.Templates]");
             _templateHolder.SetActive(false);
             Object.DontDestroyOnLoad(_templateHolder);
-            return _defaultTemplate = UiDefaultWidgets.CreateConfirmDialog(_templateHolder.transform);
+            return _defaultTemplate = UiDefaultWidgets.CreateConfirmDialog(_templateHolder.transform, _settings.WidgetStyle);
         }
 
         public void Dispose()

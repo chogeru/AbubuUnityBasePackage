@@ -67,9 +67,14 @@ namespace Abubu.Editor
             if (isNewTable) AddBuiltInStrings(localizationTable);
             var settings = LoadOrCreate<AbubuSettings>(SettingsPath);
             if (settings.Sound.Library == null) settings.Sound.Library = library;
-            if (settings.Effect.Library == null) settings.Effect.Library = effectLibrary;
+            if (settings.Effects.Library == null) settings.Effects.Library = effectLibrary;
             if (settings.Localization.Table == null) settings.Localization.Table = localizationTable;
             EditorUtility.SetDirty(settings);
+
+            // UI の設定 (Cancel で戻る・ゲームパッドの選択などの既定値) を作り、Module Settings に入れる
+            var context = new AbubuSetupContext(RootFolder, settings);
+            context.AddModuleSettings(AbubuUiTemplates.FindOrCreateUiSettings(RootFolder));
+            RunSetupSteps(context);
 
             // ProjectContext が無ければ作り、あれば Installer を追加する
             var prefabPath = FindProjectContextPrefab();
@@ -82,6 +87,26 @@ namespace Abubu.Editor
             Selection.activeObject = settings;
             EditorGUIUtility.PingObject(settings);
             Debug.Log("[Abubu] セットアップ完了。SoundLibrary にサウンドを登録すれば Sound.PlaySe(\"key\") で鳴らせます。");
+        }
+
+        /// <summary>任意モジュールの Setup の処理 (<see cref="IAbubuSetupStep"/>) を順に実行する</summary>
+        private static void RunSetupSteps(AbubuSetupContext context)
+        {
+            var steps = TypeCache.GetTypesDerivedFrom<IAbubuSetupStep>()
+                .Where(t => !t.IsAbstract && t.GetConstructor(System.Type.EmptyTypes) != null)
+                .Select(t => (IAbubuSetupStep)System.Activator.CreateInstance(t))
+                .OrderBy(s => s.Order);
+            foreach (var step in steps)
+            {
+                try
+                {
+                    step.Run(context);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
         }
 
         /// <summary>

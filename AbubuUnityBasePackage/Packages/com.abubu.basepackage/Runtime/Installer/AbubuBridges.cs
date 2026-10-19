@@ -115,13 +115,14 @@ namespace Abubu
     /// <summary>EffectLibrary の SeKey をエフェクトの位置で鳴らす</summary>
     internal sealed class EffectSeHook : IEffectPlayHook
     {
-        private readonly ISePlayer _se;
+        private readonly ISoundService _sound;
 
-        public EffectSeHook(ISePlayer se) => _se = se;
+        // ISoundService を差し替えても動くよう、ISePlayer ではなく ISoundService.Se を使う
+        public EffectSeHook(ISoundService sound) => _sound = sound;
 
         public void OnPlay(EffectEntry entry, GameObject instance, Vector3 position)
         {
-            if (!string.IsNullOrEmpty(entry.SeKey)) _se.Play(entry.SeKey, position);
+            if (!string.IsNullOrEmpty(entry.SeKey)) _sound.Se?.Play(entry.SeKey, position);
         }
     }
 
@@ -129,11 +130,11 @@ namespace Abubu
     /// <remarks>どちらも変更を 0.5 秒待ってから保存するため、その間にアプリが落とされると変更が失われる</remarks>
     internal sealed class SettingsSaveOnSuspend : IAppSuspendHandler
     {
-        private readonly AudioVolumeModel _volume;
+        private readonly AudioVolumeStore _volume;
         private readonly GraphicsSettingsStore _graphics;
 
         /// <remarks>サウンド・画面設定の機能が無効なら、その分は保存しない</remarks>
-        public SettingsSaveOnSuspend([InjectOptional] AudioVolumeModel volume = null, [InjectOptional] GraphicsSettingsStore graphics = null)
+        public SettingsSaveOnSuspend([InjectOptional] AudioVolumeStore volume = null, [InjectOptional] GraphicsSettingsStore graphics = null)
         {
             _volume = volume;
             _graphics = graphics;
@@ -150,16 +151,15 @@ namespace Abubu
     /// 中断時・終了時に、バックグラウンドで書き込み中のセーブを終わらせる (書き込みの途中でアプリが落とされないように)。
     /// 中断のきっかけ (SuspendTriggers) に Quit が含まれていなくても、終了時は必ず待つ
     /// </summary>
-    /// <remarks>IAppLifecycle を受け取らない (AppLifecycleService が IAppSuspendHandler の一覧を受け取るので、受け取ると循環参照になる)</remarks>
-    internal sealed class SaveFlushOnSuspend : IAppSuspendHandler, IAppQuitHandler
+    /// <remarks>IAppLifecycle を受け取らない (AppLifecycleService がこの一覧を受け取るので、受け取ると循環参照になる)</remarks>
+    internal sealed class SaveFlushOnSuspend : IAppSuspendFinalizer
     {
         private readonly ISaveService _save;
 
         public SaveFlushOnSuspend(ISaveService save) => _save = save;
 
-        public void OnSuspend() => _save.Flush();
-
-        public void OnQuit() => _save.Flush();
+        // 中断時の保存 (IAppSuspendHandler・OnSuspend の購読) がすべて終わってから呼ばれるので、そこで始まった非同期の書き込みも待てる
+        public void OnFinalizeSuspend(bool quitting) => _save.Flush();
     }
 
     /// <summary>フォーカスが外れている間のポーズ・消音 (AppSettings.PauseOnFocusLost / MuteOnFocusLost)</summary>

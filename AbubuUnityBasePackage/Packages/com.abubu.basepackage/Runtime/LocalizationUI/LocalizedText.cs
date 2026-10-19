@@ -7,7 +7,7 @@ namespace Abubu.Localization
 {
     /// <summary>
     /// Text / TextMeshPro に付けると、Key の翻訳を表示し、言語が変わったら自動で書き換える。
-    /// 言語ごとのフォント (LocalizationSettings.Fonts) も切り替える (Keep Font で無効化)。
+    /// 言語ごとのフォント (LocalizationFontSettings) も切り替える (Keep Font で無効化)。
     /// それ以外の表示先 (UI Toolkit・独自コンポーネントなど) は On Changed に登録すれば翻訳済みの文字列が渡される。
     /// <code>
     /// GetComponent&lt;LocalizedText&gt;().SetArguments(score);   // "スコア: {0}" の {0} に入る
@@ -26,6 +26,7 @@ namespace Abubu.Localization
         [SerializeField] private UnityEvent<string> onChanged = new();
 
         private object[] _args;
+        private ILocalizedFontService _fonts;
         private Text _text;
         private TMP_Text _tmp;
         private bool _initialized;
@@ -50,6 +51,14 @@ namespace Abubu.Localization
                 keepFont = value;
                 Refresh();
             }
+        }
+
+        /// <summary>言語ごとのフォントの取得元を渡す (DI コンテナ経由で生成された場合は自動。無ければ AbubuServices から探す)</summary>
+        [Zenject.Inject]
+        public void SetFontService([Zenject.InjectOptional] ILocalizedFontService fonts)
+        {
+            _fonts = fonts;
+            if (isActiveAndEnabled) Refresh();
         }
 
         /// <summary>書式の {0} {1} ... に入れる値を設定して表示を更新する</summary>
@@ -79,7 +88,11 @@ namespace Abubu.Localization
             var service = Service;
             if (service == null) return;
 
-            if (!keepFont) ApplyFont(service.GetFont());
+            if (!keepFont)
+            {
+                _fonts ??= AbubuServices.TryResolve<ILocalizedFontService>();
+                ApplyFont(_fonts?.GetFont());
+            }
             if (string.IsNullOrEmpty(key)) return;
 
             var value = _args is { Length: > 0 } ? service.Get(key, _args) : service.Get(key);

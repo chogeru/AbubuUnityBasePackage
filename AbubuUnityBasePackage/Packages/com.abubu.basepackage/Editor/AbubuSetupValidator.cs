@@ -80,6 +80,7 @@ namespace Abubu.Editor
             var tables = FindAssets<LocalizationTable>();
             foreach (var table in tables) CheckLocalizationTable(table, issues);
             CheckLocalizedTextKeys(tables, issues);
+            CheckInputAndEventSystems(issues);
 
             foreach (var type in FindUnboundScriptTypes())
             {
@@ -135,6 +136,115 @@ namespace Abubu.Editor
                     issues.Add(new Issue(Level.Warning, $"{path}: LocalizedText のキー \"{key}\" がどの翻訳テーブルにもありません。{KeySuggestion.Hint(key, known)}"));
                 }
             }
+        }
+
+        private const string InputSystemModuleType = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
+
+        /// <summary>
+        /// 入力と EventSystem の設定。Active Input Handling と EventSystem の Input Module の組み合わせ、
+        /// InputSystemUIInputModule のアクション未設定、UI/Navigate・UI/Cancel の有無を調べる (Input System は型名で調べるので必須にしない)
+        /// </summary>
+        private static void CheckInputAndEventSystems(List<Issue> issues)
+        {
+            var handler = ReadActiveInputHandler();
+            var inputSystemType = System.Type.GetType(InputSystemModuleType);
+            if (inputSystemType != null && handler == 0)
+            {
+                issues.Add(new Issue(Level.Warning, "Input System パッケージが入っていますが、Project Settings > Player > Active Input Handling が Input Manager (Old) です。Input System Package (New) か Both にしてください。"));
+            }
+
+            var standalone = FindScriptId(typeof(UnityEngine.EventSystems.StandaloneInputModule));
+            var inputSystem = inputSystemType != null ? FindScriptId(inputSystemType) : null;
+            if (standalone == null && inputSystem == null) return;
+
+            var paths = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path)
+                .Concat(AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath))
+                .Distinct();
+            foreach (var path in paths)
+            {
+                string text;
+                try
+                {
+                    text = System.IO.File.ReadAllText(path);
+                }
+                catch (System.IO.IOException)
+                {
+                    continue;
+                }
+
+                if (standalone != null && handler == 1 && text.Contains(standalone))
+                {
+                    issues.Add(new Issue(Level.Error, $"{path}: StandaloneInputModule は Active Input Handling = Input System のみでは動きません (実行時に例外)。EventSystem の \"Replace with InputSystemUIInputModule\" を押してください。"));
+                }
+                if (inputSystem != null && text.Contains(inputSystem) && HasModuleWithoutActions(text, inputSystem))
+                {
+                    issues.Add(new Issue(Level.Warning, $"{path}: InputSystemUIInputModule の Actions Asset が未設定です。ゲームパッド・キーボードで UI を操作できません。"));
+                }
+            }
+
+            if (inputSystemType != null) CheckUiActions(issues);
+        }
+
+        /// <summary>ProjectSettings の activeInputHandler (0 = 旧 Input Manager, 1 = Input System, 2 = 両方)。読めなければ -1</summary>
+        private static int ReadActiveInputHandler()
+        {
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(System.IO.File.ReadAllText("ProjectSettings/ProjectSettings.asset"), @"activeInputHandler:\s*(\d+)");
+                return match.Success ? int.Parse(match.Groups[1].Value) : -1;
+            }
+            catch (System.IO.IOException)
+            {
+                return -1;
+            }
+        }
+
+        /// <summary>シーン・プレハブの YAML でそのスクリプトを指す文字列 ("fileID: …, guid: …")。一時的にコンポーネントを付けて調べる</summary>
+        private static string FindScriptId(System.Type type)
+        {
+            var go = new GameObject("[Abubu.Validate]") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var component = go.AddComponent(type) as MonoBehaviour;
+                var script = component != null ? MonoScript.FromMonoBehaviour(component) : null;
+                if (script == null || !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(script, out var guid, out long fileId)) return null;
+                return $"fileID: {fileId}, guid: {guid}";
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        private static bool HasModuleWithoutActions(string text, string scriptId)
+        {
+            foreach (var block in text.Split(new[] { "\n--- " }, System.StringSplitOptions.None))
+            {
+                if (block.Contains(scriptId) && block.Contains("m_ActionsAsset: {fileID: 0}")) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Input Actions (.inputactions) のどれかに、UI 操作で使う Navigate / Cancel があるか</summary>
+        private static void CheckUiActions(List<Issue> issues)
+        {
+            var assets = AssetDatabase.FindAssets("t:InputActionAsset", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).ToList();
+            if (assets.Count == 0) return;
+
+            foreach (var path in assets)
+            {
+                string json;
+                try
+                {
+                    json = System.IO.File.ReadAllText(path);
+                }
+                catch (System.IO.IOException)
+                {
+                    continue;
+                }
+                if (json.Contains("\"Navigate\"") && json.Contains("\"Cancel\"")) return;
+            }
+            issues.Add(new Issue(Level.Warning, "どの Input Actions にも UI/Navigate・UI/Cancel がありません。ゲームパッドでの UI 操作と「戻る」が動きません (Unity 6 の InputSystem_Actions には含まれています)。"));
         }
 
         /// <summary>シーン・プレハブの YAML から、指定したスクリプトのコンポーネントの key フィールドを読む</summary>
@@ -200,7 +310,7 @@ namespace Abubu.Editor
             var name = AssetDatabase.GetAssetPath(settings);
 
             if (settings.Sound.Library == null) issues.Add(new Issue(Level.Warning, $"{name}: Sound > Library が未設定です。Sound.PlaySe(\"key\") は鳴りません。"));
-            if (settings.Effect.Library == null) issues.Add(new Issue(Level.Warning, $"{name}: Effect > Library が未設定です。Fx.Play(\"key\") は動きません。"));
+            if (settings.Effects.Library == null) issues.Add(new Issue(Level.Warning, $"{name}: Effects > Library が未設定です。Fx.Play(\"key\") は動きません。"));
 
             var scenesInBuild = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToList();
             if (scenesInBuild.Count == 0)

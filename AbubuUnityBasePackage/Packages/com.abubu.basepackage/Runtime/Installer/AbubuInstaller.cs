@@ -11,7 +11,6 @@ using Abubu.Pool;
 using Abubu.Presentation;
 using Abubu.Save;
 using Abubu.Scene;
-using Abubu.UI;
 using System;
 using UnityEngine;
 using Zenject;
@@ -46,7 +45,6 @@ namespace Abubu
 
             var modules = settings.Modules ?? new AbubuModules();
             container.BindInstance(settings).IfNotBound();
-            if (settings.Ui != null) container.BindInstance(settings.Ui).IfNotBound();
             // 任意モジュールがインストール中に AbubuSettings を Resolve せずに判定できるよう、目印として登録する
             if (settings.Integration.LocalizePackageUi) container.BindInstance(new PackageUiLocalizationEnabled());
             BindModuleSettings(container, settings.ModuleSettings);
@@ -55,37 +53,32 @@ namespace Abubu
             PauseInstaller.Install(container, settings.Pause);
             SaveInstaller.Install(container, settings.Save);
             if (modules.Sound) SoundInstaller.Install(container, settings.Sound);
-            if (modules.Effects) EffectsInstaller.Install(container, settings.Effect);
+            if (modules.Pool) PoolInstaller.Install(container);
+            if (modules.Pool && modules.Effects) EffectsInstaller.Install(container, settings.Effects);
             if (modules.Scene) SceneInstaller.Install(container, settings.Scene);
-            if (modules.AppLifecycle) AppInstaller.Install(container, settings.App);
+            if (modules.AppLifecycle) AppInstaller.Install(container, settings.AppLifecycle);
             if (modules.Localization) LocalizationInstaller.Install(container, settings.Localization);
-            if (modules.Graphics) GraphicsInstaller.Install(container, settings.GraphicsOptions);
+            if (modules.Graphics) GraphicsInstaller.Install(container, settings.Graphics);
             if (modules.Events) EventsInstaller.Install(container);
 
             // --- 機能同士の連携 (両方が有効なときだけ) ---
             if (modules.Sound) container.BindInterfacesTo<AudioPauseBridge>().AsSingle();
-            if (modules.Sound && modules.Effects) container.Bind<IEffectPlayHook>().To<EffectSeHook>().AsSingle();
-            if (modules.Scene && modules.Effects) container.BindInterfacesTo<PoolSceneBridge>().AsSingle();
+            if (modules.Sound && modules.Pool && modules.Effects) container.Bind<IEffectPlayHook>().To<EffectSeHook>().AsSingle();
+            if (modules.Scene && modules.Pool) container.BindInterfacesTo<PoolSceneBridge>().AsSingle();
             if (modules.Scene && settings.Integration.ResumePauseOnSceneChange) container.BindInterfacesTo<PauseSceneBridge>().AsSingle();
             if (modules.Localization)
             {
                 if (modules.Boot && modules.Scene) container.Bind<IBootTask>().To<LocalizationBootTask>().AsSingle();
-                if (modules.Graphics && settings.Integration.LocalizePackageUi && !container.HasBinding<IGraphicsSettingsLabels>())
-                {
-                    container.Bind<IGraphicsSettingsLabels>().To<LocalizedGraphicsSettingsLabels>().AsSingle();
-                }
-                if (settings.Integration.LocalizePackageUi && !container.HasBinding<IDialogLabels>())
-                {
-                    container.Bind<IDialogLabels>().To<LocalizedDialogLabels>().AsSingle();
-                }
+                // パッケージ自身の文言 (画面設定・ダイアログ・キー割り当て) の翻訳は、各連携モジュール (Abubu.*.Localization) が
+                // PackageUiLocalizationEnabled を見て登録する
                 if (modules.Sound) container.BindInterfacesTo<VoiceSubtitleBridge>().AsSingle().NonLazy();
             }
             if (modules.AppLifecycle)
             {
                 container.BindInterfacesTo<AppFocusBridge>().AsSingle();
-                if (settings.App.SaveSettingsOnSuspend) container.Bind<IAppSuspendHandler>().To<SettingsSaveOnSuspend>().AsSingle();
-                // 上の保存処理のあとに呼ばれるよう、最後に登録する (バックグラウンドの書き込みを終わらせる)
-                container.BindInterfacesTo<SaveFlushOnSuspend>().AsSingle();
+                if (settings.AppLifecycle.SaveSettingsOnSuspend) container.Bind<IAppSuspendHandler>().To<SettingsSaveOnSuspend>().AsSingle();
+                // 中断時の保存がすべて終わってから、バックグラウンドの書き込みを終わらせる
+                container.Bind<IAppSuspendFinalizer>().To<SaveFlushOnSuspend>().AsSingle();
             }
 
             // --- 任意モジュール (UI / Input / MessagePipe / Addressables など。導入されていれば自動で有効) ---
@@ -116,10 +109,11 @@ namespace Abubu
             var installed = new System.Collections.Generic.HashSet<Type>();
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                // 数百あるアセンブリ全部の属性を読むと起動が遅くなるため、Abubu.* だけを対象にする
+                // 数百あるアセンブリ全部の属性を読むと起動が遅くなるため、Abubu.Core を参照しているもの (= Abubu のモジュールか、
+                // 利用者が作ったモジュール) だけを対象にする。参照の一覧はメタデータなので読むのは軽い
                 if (assembly.IsDynamic) continue;
                 var name = assembly.GetName().Name;
-                if (!name.StartsWith("Abubu.", StringComparison.Ordinal) || excludedSet.Contains(name)) continue;
+                if (excludedSet.Contains(name) || !IsModuleCandidate(assembly, name)) continue;
                 foreach (AbubuModuleInstallerAttribute attribute in assembly.GetCustomAttributes(typeof(AbubuModuleInstallerAttribute), false))
                 {
                     if (!installed.Add(attribute.InstallerType)) continue;
@@ -129,6 +123,18 @@ namespace Abubu
                     }
                 }
             }
+        }
+
+        private const string CoreAssemblyName = "Abubu.Core";
+
+        private static bool IsModuleCandidate(System.Reflection.Assembly assembly, string name)
+        {
+            if (name.StartsWith("Abubu.", StringComparison.Ordinal)) return true;
+            foreach (var reference in assembly.GetReferencedAssemblies())
+            {
+                if (reference.Name == CoreAssemblyName) return true;
+            }
+            return false;
         }
     }
 }

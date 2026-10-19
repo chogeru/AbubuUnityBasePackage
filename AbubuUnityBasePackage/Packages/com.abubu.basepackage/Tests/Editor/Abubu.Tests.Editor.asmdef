@@ -7,6 +7,7 @@
         "Abubu.Common",
         "Abubu.Pause",
         "Abubu.Save",
+        "Abubu.Save.Reactive",
         "Abubu.Audio",
         "Abubu.Editor",
         "Abubu.Scene",
@@ -22,7 +23,10 @@
         "Abubu.Presentation",
         "Zenject",
         "UnityEngine.UI",
-        "R3.Unity"
+        "R3.Unity",
+        "Abubu.Audio.UI",
+        "Abubu.Graphics.UI",
+        "Abubu.Localization.UI"
     ],
     "includePlatforms": [
         "Editor"

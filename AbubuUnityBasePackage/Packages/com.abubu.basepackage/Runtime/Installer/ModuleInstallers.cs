@@ -42,7 +42,12 @@ namespace Abubu.Installers
             container.BindInstance(settings).IfNotBound();
             container.Bind<ISaveStorage>().FromMethod(() => SaveService.CreateStorage(settings)).AsSingle().IfNotBound();
             container.Bind<ISaveSerializer>().FromMethod(() => new JsonUtilitySaveSerializer(settings.PrettyPrint)).AsSingle().IfNotBound();
-            if (settings.Compress && !container.HasBinding<ISaveTransform>()) container.Bind<ISaveTransform>().To<GZipSaveTransform>().AsSingle();
+            // 利用者が別の変換 (AesSaveTransform など) を登録していても、圧縮は追加する (GZip がまだ登録されていなければ)
+            if (settings.Compress && !container.HasBinding<GZipSaveTransform>())
+            {
+                container.Bind<GZipSaveTransform>().AsSingle();
+                container.Bind<ISaveTransform>().To<GZipSaveTransform>().FromResolve();
+            }
             // ISaveService + IAsyncSaveService + ISaveFailureNotifier
             if (!container.HasBinding<ISaveService>()) container.BindInterfacesTo<SaveService>().AsSingle();
             container.BindInstance(settings.Slots ?? new SaveSlotOptions()).IfNotBound();
@@ -57,27 +62,37 @@ namespace Abubu.Installers
         {
             settings ??= new SoundSettings();
             container.BindInstance(settings).IfNotBound();
-            if (container.HasBinding<ISoundService>()) return;
 
-            container.Bind<AudioVolumeModel>().AsSingle().WithArguments(settings.DefaultVolumes, settings.VolumeSave);
-            container.BindInterfacesAndSelfTo<AudioMixerController>().AsSingle();
-            container.BindInterfacesAndSelfTo<AudioRoot>().AsSingle();
-            container.BindInterfacesTo<BgmPlayer>().AsSingle();
-            container.BindInterfacesTo<SePlayer>().AsSingle();
-            container.BindInterfacesTo<AmbientPlayer>().AsSingle();
-            container.BindInterfacesTo<VoicePlayer>().AsSingle();
+            // ISoundService だけを差し替えた場合も、音量 (VolumeSettingsPresenter など) や各プレイヤーを使う側が解決できるよう、
+            // 部品ごとに「まだ無ければ登録する」
+            // 音量は Model (IAudioVolumeModel / AudioVolumeModel) と Store (保存。Dispose で保存待ちの変更を書き出す) に分かれている
+            AudioVolumeInstaller.Install(container, settings.DefaultVolumes, settings.VolumeSave);
+            if (!container.HasBinding<AudioMixerController>()) container.BindInterfacesAndSelfTo<AudioMixerController>().AsSingle();
+            if (!container.HasBinding<AudioRoot>()) container.BindInterfacesAndSelfTo<AudioRoot>().AsSingle();
+            if (!container.HasBinding<IBgmPlayer>()) container.BindInterfacesTo<BgmPlayer>().AsSingle();
+            if (!container.HasBinding<ISePlayer>()) container.BindInterfacesTo<SePlayer>().AsSingle();
+            if (!container.HasBinding<IAmbientPlayer>()) container.BindInterfacesTo<AmbientPlayer>().AsSingle();
+            if (!container.HasBinding<IVoicePlayer>()) container.BindInterfacesTo<VoicePlayer>().AsSingle();
             container.Bind<IAudioMixerSnapshotService>().To<AudioMixerSnapshotService>().AsSingle().IfNotBound();
-            container.Bind<ISoundService>().To<SoundService>().AsSingle();
+            if (!container.HasBinding<ISoundService>()) container.Bind<ISoundService>().To<SoundService>().AsSingle();
         }
     }
 
-    /// <summary>IPoolService と IEffectService</summary>
+    /// <summary>IPoolService (オブジェクトプール)</summary>
+    public static class PoolInstaller
+    {
+        public static void Install(DiContainer container)
+        {
+            if (!container.HasBinding<IPoolService>()) container.BindInterfacesTo<PoolService>().AsSingle();
+        }
+    }
+
+    /// <summary>IEffectService (エフェクト)。IPoolService が必要</summary>
     public static class EffectsInstaller
     {
         public static void Install(DiContainer container, EffectSettings settings)
         {
             container.BindInstance(settings ?? new EffectSettings()).IfNotBound();
-            if (!container.HasBinding<IPoolService>()) container.BindInterfacesTo<PoolService>().AsSingle();
             if (!container.HasBinding<IEffectService>()) container.BindInterfacesTo<EffectService>().AsSingle();
         }
     }

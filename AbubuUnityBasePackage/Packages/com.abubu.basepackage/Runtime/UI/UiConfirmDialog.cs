@@ -38,7 +38,9 @@ namespace Abubu.UI
 
         /// <summary>表示内容を設定する。cancel が null なら Cancel ボタンを隠す (Alert)</summary>
         /// <param name="close">ボタンで閉じるときの処理 (開いた IPopupService の Close)。null なら Popups.Close</param>
-        public void Setup(string messageText, string titleText, string ok, string cancel, Func<GameObject, bool> close = null)
+        /// <param name="defaultButton">開いたときに選択しておくボタン (Alert では常に OK)</param>
+        public void Setup(string messageText, string titleText, string ok, string cancel, Func<GameObject, bool> close = null,
+            ConfirmDefaultButton defaultButton = ConfirmDefaultButton.Cancel)
         {
             _close = close;
             UiText.SetOrHide(title, titleText);
@@ -46,6 +48,17 @@ namespace Abubu.UI
             UiText.Set(okLabel, ok);
             UiText.Set(cancelLabel, cancel);
             if (cancelButton != null) cancelButton.gameObject.SetActive(cancel != null);
+
+            // 連打で削除などを確定してしまわないよう、既定では Cancel を選んでおく
+            var target = cancel != null && defaultButton == ConfirmDefaultButton.Cancel && cancelButton != null ? cancelButton : okButton;
+            if (target == null) return;
+            if (TryGetComponent<UiInitialSelection>(out var selection)) selection.Target = target;
+            // 開いた時点ですでに中が選ばれていれば (ゲームパッド操作中)、既定のボタンに選び直す
+            var eventSystem = UnityEngine.EventSystems.EventSystem.current;
+            if (eventSystem != null && eventSystem.currentSelectedGameObject != null && eventSystem.currentSelectedGameObject.transform.IsChildOf(transform))
+            {
+                eventSystem.SetSelectedGameObject(target.gameObject);
+            }
         }
 
         /// <summary>コードで組み立てるときに参照を設定する (<see cref="UiDefaultWidgets"/> が使う)</summary>

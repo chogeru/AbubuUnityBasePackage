@@ -5,6 +5,7 @@
         "Abubu.Pause",
         "Abubu.Core",
         "Abubu.Save",
+        "Abubu.Save.Reactive",
         "Abubu.Events",
         "Abubu.Pool",
         "Abubu.Effects",

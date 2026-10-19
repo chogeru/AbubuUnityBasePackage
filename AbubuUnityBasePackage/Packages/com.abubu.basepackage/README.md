@@ -124,7 +124,7 @@ UiNavigation.Back();   // ポップアップがあれば閉じ、無ければ前
 // ローカライズ
 label.text = Loc.Get("menu.start");
 label.text = Loc.Get("result.score", score);   // "スコア: {0:N0}" → 言語に合った桁区切り
-label.text = Loc.Plural("item.count", count);  // item.count.one / item.count.other から選ぶ
+label.text = Loc.GetPlural("item.count", count);  // item.count.one / item.count.other から選ぶ
 Loc.SetLanguage("en");
 
 // ライフサイクル (バックグラウンドに回る・終了する直前)
@@ -154,9 +154,11 @@ Loc.Get(LocKeys.MenuStart);              // "menu.start"
 
 ### static ショートカットの注意
 
-`Sound` / `Scenes` / `Fx` / `GameEvents` / `GameInput` / `Popups` / `Screens` / `Loc` / `AppLifecycle` は `ProjectContext` を介したグローバルなアクセスです。
+`Sound` / `Scenes` / `Fx` / `Pools` / `GameEvents` / `Saves` / `GamePause` / `GameInput` / `Popups` / `Screens` / `UiNavigation` / `Loc` / `AppLifecycle` は `ProjectContext` を介したグローバルなアクセスです。
 
-- `ProjectContext` が無い・アプリ終了中は、何もせずに戻ります。サービスが見つからないときは、型ごとに 1 回だけエラーを出します (無効にした機能を呼んでいることに気づけるように)。
+- `ProjectContext` が無い・アプリ終了中は、何もせずに戻ります (戻り値があるものは既定値)。サービスが見つからないとき (機能を無効にしている・未セットアップ) は、型ごとに 1 回だけ**エラー**を出します。各クラスの `Service` プロパティ (存在確認用) だけは、見つからなくても**警告**です。
+- `Popups.Confirm` / `Popups.Alert` は、ダイアログを出せないときに例外を投げます (`false` を返すと「キャンセルされた」と区別できないため)。
+- `GamePause.Pause(this)` / `Resume(this)` / `Toggle(this)` / `IsPaused` でポーズできます (`IPauseService` と同じく、呼び出し元ごとに数えます)。
 - Enter Play Mode Options (Domain Reload 無効) でも、再生のたびに内部状態をリセットするので前回の状態は残りません。
 - 単体テストや再利用するコードでは、`[Inject]` で `ISoundService` などを受け取る形にしてください (テストで差し替えられます)。
 
@@ -284,7 +286,8 @@ public sealed class LoadCatalogTask : IBootTask
 - キー管理が面倒なら `Sound.PlaySe(audioClip)` のように AudioClip を直接渡しても鳴らせます。
 - `IBootTask` でクラウドセーブの取得やセーブスロットの選択をしたあとに音量を読み直す場合は、`AudioVolumeModel.Reload()` を呼びます。
 - `SePoolPrewarm` を 0 にすると、音を鳴らすまでサウンド用の GameObject は作られません。
-- **メモリ** : `SoundSettings.UseAddressableClips` をオンにすると、`SoundEntry.Address` から Addressables で読み込みます (`IAudioClipProvider` で差し替え可)。`Sound.Preload` / `Sound.Unload` (`ISoundService.PreloadAsync` / `Unload`) で読み込み・解放のタイミングを指定できます。
+- **メモリ** : `SoundSettings.UseAddressableClips` をオンにすると、`SoundEntry.Address` から Addressables で読み込みます (`IAudioClipProvider` で差し替え可)。`Sound.PreloadAsync` / `Sound.Unload` (`ISoundService.PreloadAsync` / `Unload`) で読み込み・解放のタイミングを指定できます。
+- 音量は Model (`IAudioVolumeModel`: 値だけ) と Store (`AudioVolumeStore`: 読み込みと保存) に分かれています (画面設定と同じ)。ポーズ中に読み込みが終わった音は、ポーズが解けるまで鳴りません。`Sound.OnVoiceStarted` / `OnVoiceEnded` / `Volume` は null を返しません。
 - `Sound.PlayAttached` (動くオブジェクトに追従する SE)・`Sound.StopSe` / `Sound.StopAll` (`ISePlayer.Stop(SeHandle)`) で止められます。
 - **スナップショット** : `Sound.Snapshot` (`IAudioMixerSnapshotService.TransitionTo` / `Push`) で AudioMixer のスナップショットを切り替えます。`SoundSettings.PauseSnapshotName` を設定すると、ポーズ中だけそのスナップショットになります (Mixer 未設定なら何もしません)。
 - **ボイスと字幕** : `IVoicePlayer.OnVoiceStarted` / `OnVoiceEnded` (`Sound.OnVoiceStarted`) でボイスの開始・終了が分かります。ローカライズが有効なら、SoundLibrary の `Subtitle Key` を翻訳した字幕が `ISubtitleService` に流れるので、`Subtitle Text` コンポーネントを置くだけで表示できます (下の「字幕」)。
@@ -293,7 +296,7 @@ public sealed class LoadCatalogTask : IBootTask
 
 - `GraphicsSettingsModel` は状態だけを持ちます。値は `Set*` で変更し、Unity への反映は `GraphicsSettingsApplier`、保存は `GraphicsSettingsStore` が行います。
 - 初回起動時に既定値を押し付けることはありません。ユーザーが変更・保存した値だけを反映します。
-- 選択肢と保存キーは `AbubuSettings > Graphics Options` で設定します。表示する文言は `IGraphicsSettingsLabels` で差し替えられます (既定は英語)。
+- 選択肢と保存キーは `AbubuSettings > Graphics` で設定します。表示する文言は `IGraphicsSettingsLabels` で差し替えられます (既定は英語)。
 
 ### エフェクト / プール
 
@@ -340,11 +343,13 @@ Saves.Slots.DeleteSlot(2);
 ```
 
 - `ISaveSlotService` はスロットごとのデータ、`ISaveService` そのものはスロットに関係ない「共通の領域」です (音量などの設定は共通の領域に保存されます)。スロット数などは `SaveSettings.Slots` で設定します。
+- `AddPlayTime` は毎フレーム呼んで構いません (保存は `SaveSlotOptions.PlayTimeSaveInterval` 秒ごと、既定 10 秒)。スロットのファイル名は区切りが曖昧にならない形式になりました (以前の名前のファイルも読めます)。
+- UniTask / R3 で使う場合は `Abubu.Save.Reactive` の `SaveUniTaskAsync` / `LoadUniTaskAsync` / `FlushUniTaskAsync` / `ActiveSlotChangedAsObservable` / `SaveFailedAsObservable` が使えます。
 
 **非同期・変換・失敗の通知**
 
 - `SaveAsync` / `LoadAsync` (`IAsyncSaveService`) はファイルの書き込みをバックグラウンドで行います。中断・終了時には自動で `Flush` して書き込みを終わらせます (ライフサイクルが有効なとき)。
-- `ISaveTransform` で保存する文字列を変換できます。`SaveSettings.Compress` で GZip 圧縮、`AesSaveTransform` に自分の鍵を渡すと暗号化 (簡単な改ざん防止) になります。
+- `ISaveTransform` で保存する文字列を変換できます。`SaveSettings.Compress` で GZip 圧縮、`AesSaveTransform` に自分の鍵を渡すと暗号化 (簡単な改ざん防止) になります。あとで圧縮をオフにしても、圧縮済みの古いデータは読めます。暗号化したデータを鍵なしで読んだ場合は、ファイルに触らず `TransformFailed` として通知します。
 - 保存・読み込みに失敗すると `ISaveFailureNotifier.SaveFailed` に理由 (`SaveFailureReason`: DiskFull / AccessDenied / Corrupted / NewerVersion など) が流れます。「容量が足りません」のような表示に使えます。
 
 ### イベントバス
@@ -360,7 +365,7 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 
 ### 入力 (Input System 導入時)
 
-- `IInputService` は Input System の型を外に出さず、`Move` / `Look` (ReactiveProperty) と `Jump` / `Attack` / `Interact` / `Submit` / `Cancel` (Observable) を公開します。
+- `IInputService` は、よく使う操作を `Move` / `Look` (ReactiveProperty) と `Jump` / `Attack` / `Interact` / `Submit` / `Cancel` (Observable) として公開します。細かい操作が必要な場合は、Input System の型 (`Actions` の InputActionAsset、`GetAction` の InputAction、`Performed` の CallbackContext) もそのまま使えます。
 - 既定ではプロジェクト共通の Input Actions (Unity 6 テンプレートの `InputSystem_Actions`) を使います。別のアセットを使うときは `Resources/AbubuInputSettings` (Create > Abubu > Input Settings) を作り、Action のパスを書き換えます。
 - ポーズ中に無効にする ActionMap は `Pause Disabled Maps` で指定します (既定では何も無効にしません)。会話中などは `SetGameplayEnabled(false)` で止められます。
 - `RebindAsync("Player/Jump")` でキー割り当てを対話的に変更し、結果は `ISaveService` に保存されて次回起動時に復元されます (`ResetBindings()` で初期状態に戻る)。
@@ -397,7 +402,7 @@ _popups.PopAll();
 - ダイアログは OK 以外 (Cancel・Cancel 入力・背面クリック・シーン切り替え) で閉じられると false を返します。ボタンの文言は `AbubuUiSettings > Ok Label / Cancel Label`、ローカライズが有効なら翻訳テーブルの `abubu.common.ok` / `abubu.common.cancel` が使われます。トーストはポーズ中も表示され、続けて出したものは順番に表示されます。
 - プレハブのコンポーネントに `IPopup` を実装すると、`OnOpened` / `OnClosing` の通知を受け取れます。
 - プレハブは DI コンテナ経由で生成されるので、ポップアップのコンポーネントで `[Inject]` が使えます (シーンに SceneContext があればそのコンテナ、無ければ ProjectContext)。
-- `AbubuUiSettings` (`AbubuSettings > Ui` に割り当て) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・シーン切り替え時に閉じる (`Close On Scene Change`、既定でオン)・Sorting Order を設定できます。
+- `AbubuUiSettings` (`AbubuSettings > Module Settings` に入れる) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・シーン切り替え時に閉じる (`Close On Scene Change`、既定でオン)・Sorting Order を設定できます。
 
 ### 画面遷移
 
@@ -412,20 +417,29 @@ _screens.BackToRoot();
 - 表示されるのは一番手前の 1 画面だけです。ダイアログのように背面を残して重ねたいものはポップアップを使います (ポップアップは画面より手前に出ます)。
 - 画面のコンポーネントに `IScreen` を実装すると、`OnShown` (一番手前になった) / `OnHidden` (一番手前でなくなった) を受け取れます。
 - `AbubuUiSettings > Keep Previous Screens` がオン (既定) なら前の画面は非表示で残り、戻ったときにスクロール位置などがそのまま残ります。オフなら破棄し、戻るときにプレハブから作り直します。
-- `AbubuUiSettings > Back On Cancel` をオンにすると、Cancel 入力 (Esc / ゲームパッドの B など) で `UiNavigation.Back()` が実行されます (Input System 導入時)。自前で Cancel を結線している場合はオンにしないでください (二重に戻ります)。
+- Cancel 入力 (Esc / ゲームパッドの B など) で `UiNavigation.Back()` が実行されます (Input System 導入時、`AbubuUiSettings > Back On Cancel` で既定オン)。自前で Cancel を結線している場合はオフにしてください (二重に戻ります)。
+  - 文字入力中・Dropdown のリストが開いている間・デバッグメニューをゲームパッドで操作中は戻りません。ほかに止めたい状態 (キー割り当ての入力待ちなど) は `IUiBackBlocker` をバインドします。
+  - 同じキーでポーズメニューを開く場合は、`UiNavigation.HandledBackThisFrame` が true なら開かないようにしてください (ポップアップを閉じたのと同じフレームで開き直さないように)。
 
 ### ポップアップ・画面の共通設定
 
 - **開閉アニメーション** : ルートのコンポーネントに `IUiTransition` (`PlayShowAsync` / `PlayHideAsync`) を実装します。閉じるときはアニメーションが終わってから破棄 (画面は非表示) され、途中で同じ画面に戻った場合はキャンセルされます。ポーズ中も動かす場合は unscaled time で再生してください。
-- **初期選択** : ルートに `UI Initial Selection` を付けると、表示されたときに指定したボタン (未指定なら最初の操作可能な Selectable) を選択します。ポップアップを閉じると、開く前の選択に戻ります。`Select First On Open` をオンにすると、付けていなくても最初のボタンを選択します (ゲームパッド中心のゲーム向け)。
+- **初期選択** (`Select On Open`) : 既定の `Auto` では、ゲームパッドで操作中なら開いたときに最初のボタン (ルートの `UI Initial Selection` で指定したもの) を選び、マウス操作中なら裏の UI の選択を外します (決定キーで裏のボタンが押されないように)。`Always` は常に選び、`Never` は `UI Initial Selection` が付いているときだけ選びます。ポップアップを閉じると、開く前の選択に戻ります。
+- **フォーカスの閉じ込め** : ポップアップには `UI Focus Scope` が自動で付き、ゲームパッドの選択がポップアップの外 (裏の画面のボタン) に出ても中に戻します。下に重なったポップアップは操作できなくなります (CanvasGroup.interactable)。自分のモーダルな UI に `UI Focus Scope` を付けても使えます。
+- **確認ダイアログ** の初期選択は、連打で削除などを確定しないよう既定で Cancel です (`Confirm Default Button`)。
 - **フォーカスの維持** (Input System 導入時、`Keep Focus On Navigate` で既定オン) : マウスで背景をクリックして選択が外れた後や、ポップアップの裏のボタンが選ばれているときに、スティック・十字キーを倒す (またはゲームパッドに持ち替える) と、一番手前のポップアップ (無ければ画面) の中を選び直します。コードからは `UiNavigation.EnsureSelection()`。
 - **スクロール** : ScrollRect に `UI Scroll To Selection` を付けると、ゲームパッドで選択した項目が見えるように自動でスクロールします。
+- **長押しボタン** : `UI Hold Button` は押し続けると確定するボタンです (マウス・タッチ・ゲームパッドの決定ボタン。ポーズ中も進む)。セーブデータの削除など、うっかり押されたくない操作に使います。
+- **操作の案内** : ポップアップ・画面のルートに `IUiPromptProvider` を実装すると、`IUiPromptService.Top` が一番手前の案内 ("Ⓐ 決定" "Ⓑ 戻る" など) を流します。表示は Input 側の UiButtonPromptBar などが行います。
+- **EventSystem** : ポップアップ・画面を出すときに EventSystem が無ければ、シーンをまたいで残る EventSystem を用意します (`Ensure Event System`、既定オン。Input System 導入時は InputSystemUIInputModule にプロジェクトの Input Actions を設定)。シーンに EventSystem があればそちらを優先し、用意したものは止めます。
+- **Safe Area** : 自動で作る Canvas の中身はノッチ・角丸を避けた範囲に収まります (`Use Safe Area`、既定オン。Backdrop は画面全体)。自分の Canvas では `UI Safe Area` を中身をまとめる子オブジェクトに付けます。
+- **フォント** : 組み込みのダイアログ・トーストのフォントは `Default Font` / `Default Tmp Font` で指定します。ローカライズの言語ごとのフォント (`LocalizationFontSettings`) があればそちらが優先されます。色・大きさは `Widget Style` です。
 - **生成方法** : インスタンスは `IUiFactory` で作ります。既定の `ContainerUiFactory` は DI コンテナ経由で生成するので `[Inject]` が使えます。Addressables からの読み込みや自前のプールを使う場合は、`IUiFactory` を AbubuInstaller より前にバインドして差し替えます。
 - **Backdrop** : `Backdrop Prefab` を指定すると、背面の覆いをプレハブで作ります (未指定なら `Backdrop Color` の Image)。
-- **Canvas** : 既定は Screen Space Overlay で、`Reference Resolution` / `Match Width Or Height` / `Sorting Order` を設定できます。VR・セーフエリア対応・独自の Canvas Scaler を使う場合は `Popup Canvas Prefab` / `Screen Canvas Prefab` に Canvas のプレハブを指定してください。
+- **Canvas** : 既定は Screen Space Overlay で、`Reference Resolution` / `Match Width Or Height` / `Sorting Order` を設定できます。VR (World Space) や独自の Canvas Scaler を使う場合は `Popup Canvas Prefab` / `Screen Canvas Prefab` に Canvas のプレハブを指定してください。
 - 画面やポップアップを `Destroy(gameObject)` で閉じても、履歴・Backdrop・ポーズはその場で更新されます。ポップアップ自身の閉じるボタンからは `Popups.Close(gameObject)` を呼んでも閉じられます。
 - シーン切り替え時に閉じる (`Close On Scene Change`) のは、開いたときのシーンが破棄されたものだけです。加算ロードでアクティブシーンを切り替えただけでは閉じません。
-- UI の設定は `AbubuSettings > Ui` に `AbubuUiSettings` を割り当てます。未設定なら `Resources/AbubuUiSettings`、それも無ければ既定値を使います。
+- UI の設定 (`AbubuUiSettings`) は `AbubuSettings > Module Settings` に入れます (`Setup Project` が作って入れます)。無ければ `Resources/AbubuUiSettings`、それも無ければ既定値を使います。
 
 ### ローカライズ
 
@@ -452,11 +466,11 @@ item.count.other,{count} 個,{count} items
 
 - `Get(key, args)` は選択中の言語の書式 (`CultureInfo`) で数値・日付を書式化します (`{0:N0}` → 英語 `1,200` / ドイツ語 `1.200`)。
 - 名前付きのプレースホルダー: `Get("result.rank", new Dictionary<string, object> { ["rank"] = 3 })` → `{rank}`。値が無いプレースホルダーは例外にせず、そのまま残します。
-- 複数形: `GetPlural("item.count", n)` (`Loc.Plural`) は `.zero` (0 のときだけ・任意) / `.one` / `.few` / `.many` / `.other` から言語の規則で選び、`{0}` と `{count}` に数を入れます (CLDR の簡略版: 日中韓は常に other、ロシア語・ポーランド語は one / few / many など)。
+- 複数形: `GetPlural("item.count", n)` (`Loc.GetPlural`) は `.zero` (0 のときだけ・任意) / `.one` / `.few` / `.many` / `.other` から言語の規則で選び、`{0}` と `{count}` に数を入れます (CLDR の簡略版: 日中韓は常に other、ロシア語・ポーランド語は one / few / many など)。
 
 **フォント・アセット**
 
-- `Localization > Fonts` に言語ごとのフォント (TextMeshPro / UI.Text) を登録すると、`Localized Text` が言語に合わせて切り替えます (日中韓の文字が豆腐にならないように。`*` はほかのすべての言語用)。今のフォントのままにしたい Text は `Keep Font` をオンにします。
+- `Create > Abubu > Localization Fonts` で作った `LocalizationFontSettings` に言語ごとのフォント (TextMeshPro / UI.Text) を登録し、`AbubuSettings > Module Settings` に入れると、`Localized Text` が言語に合わせて切り替えます (日中韓の文字が豆腐にならないように。`*` はほかのすべての言語用)。今のフォントのままにしたい Text は `Keep Font` をオンにします。
 - 文字入りの画像・ボイスなどは LocalizationTable の `Assets` に言語ごとに登録し、`Localized Image` (Image / SpriteRenderer)・`Localized Audio` (AudioSource) を付けるか、`GetAsset<T>(key)` / `LocalizedAsset<T>` で取り出します。
 - Text / TextMeshPro 以外 (UI Toolkit など) は、`Localized Text` の `On Changed` に処理を登録するか、`ILocalizationService.Changed` を購読してください。
 
@@ -487,7 +501,7 @@ _subtitles.Show("story.intro.01", 3f);   // ボイス以外から出す (3 秒�
 ### ライフサイクル / 自動保存
 
 - `IAppLifecycle.OnSuspend` は「アプリが中断される直前」に 1 回流れます。モバイルはバックグラウンドに回ったあと終了処理なしで落とされることがあるので、保存はここで行ってください。
-- 中断として扱うきっかけは `AbubuSettings > App > Suspend Triggers` で選べます (Background / FocusLost / Quit / FocusLostOnWebGL。`None` で無効)。既定は Background + Quit + FocusLostOnWebGL です (WebGL はタブを閉じたときに終了処理が呼ばれないため)。
+- 中断として扱うきっかけは `AbubuSettings > App Lifecycle > Suspend Triggers` で選べます (Background / FocusLost / Quit / FocusLostOnWebGL。`None` で無効)。既定は Background + Quit + FocusLostOnWebGL です (WebGL はタブを閉じたときに終了処理が呼ばれないため)。
 - `IAppSuspendHandler` を実装してバインドしておくと、中断時に呼ばれます。OS が待ってくれる時間は短いので、同期的に終わる処理だけを書いてください。
 
 ```csharp
@@ -534,6 +548,7 @@ Logger.Warning("HP がマイナスです");
 - LocalizationTable の重複キー・未翻訳のキー、`Localized Text` で使われているのにテーブルに無いキー
 - 同名のファイルに無く Missing Script になるクラス
 - セーブの保存先フォルダ名の衝突の可能性
+- Active Input Handling と EventSystem の Input Module の組み合わせ (StandaloneInputModule が Input System のみの設定で使われている)、InputSystemUIInputModule の Actions Asset 未設定、Input Actions に UI/Navigate・UI/Cancel があるか
 
 ### Addressables (導入時のみ)
 
@@ -553,7 +568,7 @@ _assets.Release<Sprite>("UI/Icon");
 
 | 項目 | 内容 |
 |---|---|
-| Sound / Effects / Scene / Boot / Graphics / Localization / App Lifecycle / Events | 各機能。Scene をオフにすると Boot も無効になります |
+| Sound / Pool / Effects / Scene / Boot / Graphics / Localization / App Lifecycle / Events | 各機能。Scene をオフにすると Boot も、Pool をオフにすると Effects も無効になります |
 | Auto Install Modules | 導入済みの任意モジュール (UI / Input / MessagePipe / Addressables など) を自動でインストールする |
 | Excluded Modules | 自動インストールしないモジュールのアセンブリ名 (例: `Abubu.UI`, `Abubu.MessagePipe`) |
 
@@ -575,9 +590,23 @@ public sealed class MyInstaller : MonoInstaller
 }
 ```
 
+### アセンブリの構成
+
+機能どうしをつなぐコードは、両方が入っているときだけ有効になる小さなアセンブリに分かれています。`Abubu.Installer` は uGUI / TextMeshPro に依存しません。
+
+| アセンブリ | 内容 |
+|---|---|
+| `Abubu.Localization` | ローカライズ本体 (uGUI / TMP 不要) |
+| `Abubu.Localization.UI` | `Localized Text` / `Localized Image` / `Localized Audio` / `Subtitle Text`、言語ごとのフォント |
+| `Abubu.UI.Localization` | ダイアログの文言・フォントの翻訳 |
+| `Abubu.Graphics.UI.Localization` | 画面設定パネルの選択肢の翻訳 |
+| `Abubu.Input.UI.Localization` | キー割り当て画面の文言の翻訳 |
+| `Abubu.UI.Input` | Cancel で戻る・フォーカスの維持・EventSystem の用意・長押しボタンの入力 |
+
 ## 既存プロジェクトへの導入
 
 - すでに `Resources/ProjectContext.prefab` がある場合、`Setup Project` は既存の Installer を残したまま `AbubuInstaller` を追加するだけです (既存のバインドは上書きしません)。
+- `Setup Project` は `AbubuUiSettings` と、Input System 導入時は `AbubuInputSettings` も作って `Module Settings` に入れます (設定しなくてもゲームパッドで UI を操作でき、B で戻れる状態になります)。
 - 主なサービス (`ISaveService` / `ISceneService` / `IPauseService` / `ISoundService` / `IPoolService` / `IEffectService` / `IEventBus` / `IAppLifecycle` / `ILocalizationService` / `IPopupService` / `IScreenService`) は、すでにバインドされていれば登録しません。自前の実装がある場合は AbubuInstaller より前の Installer でバインドしてください。
 
 ## 無効化の方法
@@ -585,11 +614,13 @@ public sealed class MyInstaller : MonoInstaller
 | 機能 | 止め方 |
 |---|---|
 | 機能そのもの | `Modules` の各項目をオフ |
-| 自動保存 (中断時の保存) | `App > Suspend Triggers` を `None`、または `Save Settings On Suspend` をオフ |
+| 自動保存 (中断時の保存) | `App Lifecycle > Suspend Triggers` を `None`、または `Save Settings On Suspend` をオフ |
 | シーン遷移時のポーズ解除 | `Integration > Resume Pause On Scene Change` をオフ |
 | 言語の保存 | `Localization > Remember Language` をオフ |
 | ログのファイル出力 | `Log > Write To File` をオフ (既定オフ) |
-| Cancel で戻る | `AbubuUiSettings > Back On Cancel` をオフ (既定オフ) |
+| Cancel で戻る | `AbubuUiSettings > Back On Cancel` をオフ (既定オン) |
+| EventSystem の自動用意 | `AbubuUiSettings > Ensure Event System` をオフ |
+| 開いたときの選択 | `AbubuUiSettings > Select On Open` を `Never` |
 | シーン切り替え時にポップアップ / 画面を閉じる | `AbubuUiSettings > Close On Scene Change` をオフ |
 | ポーズ中の timeScale 変更 | `Pause > Stop Time Scale` をオフ |
 
@@ -614,7 +645,8 @@ Container.Bind<ISceneTransition>().To<MyTransition>().AsSingle();
 ```
 - ロード画面: `SceneLoadingView` を付けたプレハブを `AbubuSettings > Scene > Loading View Prefab` に設定 (表示は `SceneLoadingScreen` が `ISceneService.ShowLoadingScreen` を購読して行います)
 - 自前の ProjectContext Installer から使う: `AbubuInstaller.Install(Container, settings);`
-- 自作モジュールを自動登録する: `IAbubuModuleInstaller` を実装し、アセンブリに `[assembly: AbubuModuleInstaller(typeof(MyInstaller))]` を付けます。走査されるのは名前が `Abubu.` で始まるアセンブリだけなので、asmdef の名前を `Abubu.MyModule` のようにしてください。
+- 自作モジュールを自動登録する: `IAbubuModuleInstaller` を実装し、アセンブリに `[assembly: AbubuModuleInstaller(typeof(MyInstaller))]` を付けます。走査されるのは `Abubu.Core` を参照しているアセンブリ (と名前が `Abubu.` で始まるもの) です。モジュールの設定アセットは `AbubuSettings > Module Settings` に入れると型ごとに登録されるので、`[InjectOptional]` で受け取れます。
+- `Setup Project` に処理を足す: `IAbubuSetupStep` (Editor) を実装したクラスは自動で見つかり、Setup Project の最後に実行されます (任意モジュールの設定アセットを作るなど)。
 
 ## 対応プラットフォーム
 

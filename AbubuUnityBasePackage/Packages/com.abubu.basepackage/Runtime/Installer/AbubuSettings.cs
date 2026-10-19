@@ -10,8 +10,8 @@ using Abubu.Logging;
 using Abubu.Pause;
 using Abubu.Save;
 using Abubu.Scene;
-using Abubu.UI;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Abubu
 {
@@ -30,20 +30,20 @@ namespace Abubu
         public BootSettings Boot = new();
         public SoundSettings Sound = new();
         public SceneSettings Scene = new();
-        public EffectSettings Effect = new();
+        [FormerlySerializedAs("Effect")]
+        public EffectSettings Effects = new();
         public SaveSettings Save = new();
         public PauseSettings Pause = new();
         public LocalizationSettings Localization = new();
-        public AppSettings App = new();
+        [FormerlySerializedAs("App")]
+        public AppSettings AppLifecycle = new();
         public LogSettings Log = new();
 
         [Tooltip("画面設定の選択肢・保存キー")]
-        public GraphicsSettingsOptions GraphicsOptions = new();
+        [FormerlySerializedAs("GraphicsOptions")]
+        public GraphicsSettingsOptions Graphics = new();
 
-        [Tooltip("ポップアップ・画面遷移の設定 (任意)。未設定なら Resources/AbubuUiSettings、それも無ければ既定値を使う")]
-        public AbubuUiSettings Ui;
-
-        [Tooltip("任意モジュールの設定アセット (AbubuInputSettings など)。型ごとに DI コンテナへ登録され、各モジュールが受け取る。未設定のモジュールは Resources か既定値を使う")]
+        [Tooltip("任意モジュールの設定アセット (AbubuUiSettings / AbubuInputSettings / LocalizationFontSettings など)。型ごとに DI コンテナへ登録され、各モジュールが受け取る。未設定のモジュールは Resources か既定値を使う")]
         public List<ScriptableObject> ModuleSettings = new();
     }
 
@@ -56,7 +56,10 @@ namespace Abubu
         [Tooltip("サウンド (BGM / SE / 環境音 / ボイス / 音量)")]
         public bool Sound = true;
 
-        [Tooltip("オブジェクトプールとエフェクト")]
+        [Tooltip("オブジェクトプール (Pools)")]
+        public bool Pool = true;
+
+        [Tooltip("エフェクト (Fx)。プールを使うので、Pool がオフなら無効になる")]
         public bool Effects = true;
 
         [Tooltip("シーン遷移 (フェード / ロード画面)。オフにすると Boot も無効になる")]
@@ -82,14 +85,6 @@ namespace Abubu
 
         [Tooltip("自動インストールしないモジュールのアセンブリ名 (例: Abubu.UI, Abubu.MessagePipe)")]
         public string[] ExcludedModules = Array.Empty<string>();
-    }
-
-    /// <summary>
-    /// 「パッケージ自身の文言をローカライズする (Integration.LocalizePackageUi)」の目印。
-    /// 任意モジュールの Installer は、インストール中に AbubuSettings を Resolve せず HasBinding で判定する
-    /// </summary>
-    public sealed class PackageUiLocalizationEnabled
-    {
     }
 
     /// <summary>機能同士の連携の設定</summary>

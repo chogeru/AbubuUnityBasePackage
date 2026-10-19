@@ -14,7 +14,10 @@
         "Abubu.UI",
         "Abubu.Save",
         "Zenject",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Abubu.Audio.UI",
+        "Abubu.Graphics.UI",
+        "Abubu.Localization.UI"
     ],
     "includePlatforms": [
         "Editor"

@@ -3,7 +3,6 @@
     "rootNamespace": "Abubu",
     "references": [
         "Abubu.Core",
-        "Abubu.Installer",
         "Abubu.Input.UI",
         "Abubu.Localization",
         "Zenject"
@@ -15,12 +14,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "ABUBU_INPUTSYSTEM",
         "ABUBU_DEPS_LITMOTION",
         "ABUBU_DEPS_R3",
         "ABUBU_DEPS_UNITASK",
+        "ABUBU_DEPS_UPOOLS",
         "ABUBU_DEPS_ZENJECT",
-        "ABUBU_DEPS_UPOOLS"
+        "ABUBU_INPUTSYSTEM"
     ],
     "versionDefines": [
         {

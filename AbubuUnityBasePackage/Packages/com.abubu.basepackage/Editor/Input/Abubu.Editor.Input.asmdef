@@ -1,0 +1,59 @@
+{
+    "name": "Abubu.Editor.Input",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Editor",
+        "Abubu.Installer",
+        "Abubu.Input",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "ABUBU_DEPS_LITMOTION",
+        "ABUBU_DEPS_R3",
+        "ABUBU_DEPS_UNITASK",
+        "ABUBU_DEPS_UPOOLS",
+        "ABUBU_DEPS_ZENJECT",
+        "ABUBU_INPUTSYSTEM"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "ABUBU_INPUTSYSTEM"
+        },
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        },
+        {
+            "name": "com.annulusgames.lit-motion",
+            "expression": "",
+            "define": "ABUBU_DEPS_LITMOTION"
+        },
+        {
+            "name": "com.annulusgames.u-pools",
+            "expression": "",
+            "define": "ABUBU_DEPS_UPOOLS"
+        }
+    ],
+    "noEngineReferences": false
+}

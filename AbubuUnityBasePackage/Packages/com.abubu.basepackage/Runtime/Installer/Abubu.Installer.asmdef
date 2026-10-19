@@ -12,14 +12,13 @@
         "Abubu.Scene",
         "Abubu.Graphics",
         "Abubu.Boot",
-        "Abubu.Presentation",
         "Abubu.Logging",
         "Abubu.Localization",
         "Abubu.App",
-        "Abubu.UI",
         "R3.Unity",
         "UniTask",
-        "Zenject"
+        "Zenject",
+        "Abubu.Scene.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

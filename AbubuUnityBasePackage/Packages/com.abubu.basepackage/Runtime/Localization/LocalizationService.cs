@@ -77,9 +77,6 @@ namespace Abubu.Localization
         /// <summary>言語の表示名 ("ja" → "日本語")。言語選択 UI 用。テーブルに "language.ja" のキーがあればそちらを使う</summary>
         string GetLanguageName(string language);
 
-        /// <summary>選択中の言語のフォント (設定が無ければ null)</summary>
-        LocalizationFont GetFont();
-
         /// <summary>言語ごとのアセット (画像・音声など)。フォールバックも探し、無ければ null</summary>
         T GetAsset<T>(string key) where T : Object;
 
@@ -87,8 +84,9 @@ namespace Abubu.Localization
         UniTask<T> GetAssetAsync<T>(string key, CancellationToken ct = default) where T : Object;
     }
 
-    public sealed class LocalizationService : ILocalizationService, IDisposable
+    public sealed class LocalizationService : ILocalizationService, IInitializable, IDisposable
     {
+        /// <summary>選んだ言語を保存する既定のキー (LocalizationSettings.SaveKey で変更できる)</summary>
         public const string SaveKey = "abubu.language";
 
         /// <summary>言語名をテーブルで上書きするときのキーの接頭辞 ("language.ja")</summary>
@@ -100,6 +98,8 @@ namespace Abubu.Localization
         private readonly IAsyncLocalizationSource _asyncSource;
         private readonly LocalizationSettings _settings;
         private readonly ISaveService _save;
+
+        private string LanguageSaveKey => string.IsNullOrWhiteSpace(_settings.SaveKey) ? SaveKey : _settings.SaveKey;
         private readonly string[] _languages;
         private readonly string _fallback;
         private readonly ReactiveProperty<string> _language;
@@ -152,7 +152,7 @@ namespace Abubu.Localization
 
             _fallback = LanguageCode.Resolve(_settings.FallbackLanguage, _languages) ?? _languages.FirstOrDefault() ?? "";
 
-            var saved = _save != null && _save.TryLoad<string>(SaveKey, out var s) ? s : null;
+            var saved = _save != null && _save.TryLoad<string>(LanguageSaveKey, out var s) ? s : null;
             var initial = LanguageCode.Resolve(saved, _languages)
                           ?? LanguageCode.Resolve(_settings.StartupLanguage, _languages)
                           ?? LanguageCode.Resolve(LanguageCode.FromSystemLanguage(Application.systemLanguage), _languages)
@@ -215,15 +215,21 @@ namespace Abubu.Localization
             return true;
         }
 
+        /// <summary>非同期の取得元なら、起動時に読み込みを始める (起動処理 Boot が無効でも翻訳が読み込まれるように)</summary>
+        public void Initialize() => BeginInitialLoad();
+
         public async UniTask WaitReadyAsync(CancellationToken ct = default)
         {
             if (_ready) return;
-            if (_readySource == null)
-            {
-                _readySource = new UniTaskCompletionSource();
-                LoadInitialAsync().Forget();
-            }
+            BeginInitialLoad();
             await _readySource.Task.AttachExternalCancellation(ct);
+        }
+
+        private void BeginInitialLoad()
+        {
+            if (_ready || _readySource != null) return;
+            _readySource = new UniTaskCompletionSource();
+            LoadInitialAsync().Forget();
         }
 
         private async UniTaskVoid LoadInitialAsync()
@@ -267,7 +273,7 @@ namespace Abubu.Localization
             _ready = true;
             if (language != _language.Value)
             {
-                _save?.Save(SaveKey, language);
+                _save?.Save(LanguageSaveKey, language);
                 _language.Value = language;
             }
             _changed.OnNext(Unit.Default);
@@ -390,22 +396,6 @@ namespace Abubu.Localization
             };
         }
 
-        public LocalizationFont GetFont()
-        {
-            var fonts = _settings.Fonts;
-            if (fonts == null || fonts.Count == 0) return null;
-
-            // 選択中の言語と、その親 (zh-Hant-TW → zh-Hant → zh) だけを見る。フォールバック言語のフォントは使わない
-            foreach (var candidate in LanguageCode.Chain(_language.Value))
-            {
-                foreach (var font in fonts)
-                {
-                    if (font != null && font.Language != "*" && LanguageCode.Normalize(font.Language) == candidate) return font;
-                }
-            }
-            return fonts.FirstOrDefault(f => f != null && f.Language == "*");
-        }
-
         public T GetAsset<T>(string key) where T : Object
         {
             if (string.IsNullOrEmpty(key) || _source is not ILocalizedAssetSource assets) return null;
@@ -451,22 +441,29 @@ namespace Abubu
     /// <code>
     /// label.text = Loc.Get("menu.start");
     /// label.text = Loc.Get("result.score", score);
-    /// label.text = Loc.Plural("item.count", count);
+    /// label.text = Loc.GetPlural("item.count", count);
     /// Loc.SetLanguage("en");
     /// </code>
     /// ProjectContext が無いときはキーをそのまま返す。
     /// </summary>
     public static class Loc
     {
+        /// <summary>サービス本体。取得できない場合は null (警告を型ごとに 1 回出す)</summary>
         public static ILocalizationService Service => AbubuServices.TryResolve<ILocalizationService>();
 
-        public static string Get(string key) => Service?.Get(key) ?? key;
-        public static string Get(string key, params object[] args) => Service?.Get(key, args) ?? key;
-        public static string Get(string key, IReadOnlyDictionary<string, object> named) => Service?.Get(key, named) ?? key;
-        public static string Plural(string key, long count) => Service?.GetPlural(key, count) ?? key;
-        public static T Asset<T>(string key) where T : UnityEngine.Object => Service?.GetAsset<T>(key);
-        public static bool SetLanguage(string language) => Service?.SetLanguage(language) ?? false;
-        public static string Language => Service?.Language.CurrentValue;
-        public static Observable<string> OnLanguageChanged => Service?.Language ?? Observable.Empty<string>();
+        /// <summary>ショートカット内部用。取得できない場合は null で、エラーを型ごとに 1 回出す</summary>
+        private static ILocalizationService Svc => AbubuServices.ResolveOrLogError<ILocalizationService>();
+
+        public static string Get(string key) => Svc?.Get(key) ?? key;
+        public static string Get(string key, params object[] args) => Svc?.Get(key, args) ?? key;
+        public static string Get(string key, IReadOnlyDictionary<string, object> named) => Svc?.Get(key, named) ?? key;
+        public static string GetPlural(string key, long count, IReadOnlyDictionary<string, object> named = null) =>
+            Svc?.GetPlural(key, count, named) ?? key;
+        public static T GetAsset<T>(string key) where T : UnityEngine.Object => Svc?.GetAsset<T>(key);
+        public static bool SetLanguage(string language) => Svc?.SetLanguage(language) ?? false;
+        public static string Language => Svc?.Language.CurrentValue;
+
+        /// <summary>言語が切り替わったとき (購読した時点の言語は流れない)</summary>
+        public static Observable<string> OnLanguageChanged => Svc?.Language.Skip(1) ?? Observable.Empty<string>();
     }
 }

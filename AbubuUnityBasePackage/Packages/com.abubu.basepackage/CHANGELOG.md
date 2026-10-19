@@ -8,6 +8,12 @@
 ## [Unreleased]
 
 ### Breaking Changes
+- アセンブリの分割: `LocalizedText` / `LocalizedImage` / `LocalizedAudio` / `SubtitleText` を `Abubu.Localization.UI` に移動 (.meta の GUID は維持)。言語ごとのフォントは `LocalizationSettings.Fonts` から `LocalizationFontSettings` (Module Settings に入れる) / `ILocalizedFontService` に移動し、`ILocalizationService.GetFont` を削除。翻訳の連携 (`LocalizedDialogLabels` / `LocalizedGraphicsSettingsLabels` など) を連携用アセンブリに移動し、`Abubu.Installer` は uGUI / TMP に依存しなくなった
+- `AbubuSettings.Ui` を削除 (`AbubuUiSettings` は `Module Settings` に入れる)。`AbubuSettings` のフィールド名を `Effect` → `Effects`、`App` → `AppLifecycle`、`GraphicsOptions` → `Graphics` に変更 (保存済みの値は引き継がれる)
+- `AbubuUiSettings.SelectFirstOnOpen` を `SelectOnOpen` (Never / Auto / Always) に変更。`BackOnCancel` の既定値をオンに変更
+- `Loc.Plural` → `Loc.GetPlural`、`Loc.Asset` → `Loc.GetAsset`。`Loc.OnLanguageChanged` は購読時の現在値を流さず、変更だけを流す
+- `Popups` / `Screens` / `UiNavigation` / `Loc` / `AppLifecycle` のショートカットは、サービスが無いときに警告ではなくエラーを出す。`Popups.Confirm` / `Alert` はダイアログを出せないときに例外を投げる
+- `AbubuInstaller` が任意モジュールを探す対象を「名前が Abubu. で始まる」から「Abubu.Core を参照している (または名前が Abubu. で始まる)」に変更
 - `IInputService` に `ResetBinding` / `SetBindingOverride` / `SaveBindings` / `BindingsChanged` を追加 (実装している場合は対応が必要)。`RebindAsync` は既定で同じ種類のデバイスの操作だけを受け付ける (`RebindMatchBindingDevice`)
 - `ISaveService.Save` が bool を返すように変更し、`ForceSave<T>` を追加。新しいバージョンで保存されたデータは読み込まず (`TryLoad` が false)、`キー.newer` に 1 回だけ退避する。そのキーへの `Save` は `ForceSave` か `Delete` まで false を返す。`.bak` から復旧しても `.bak` は残す。`Delete` は `.broken` / `.newer` / `.tmp` も消す。File 保存の既定フォルダを `Save` から `AbubuSave` に変更 (既存の設定アセットの値はそのまま)
 - `ISceneService` の Load / LoadWithPayload / Reload / LoadAdditive / Unload が `UniTask<bool>` を返すように変更 (遷移中などで受け付けなかった場合は false)。キャンセル時は元のシーンにフェードで戻ってから `OperationCanceledException` を投げる
@@ -21,6 +27,10 @@
 - `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
 
 ### Added
+- UI のコントローラー対応: `UiFocusScope` (選択をポップアップの中に閉じ込める。ポップアップには自動で付く)、下に重なったポップアップの操作を止める、`AbubuUiSettings.SelectOnOpen` (Auto: ゲームパッド操作中だけ選択し、マウス操作中は裏の選択を外す)、確認ダイアログの初期選択を Cancel に (`ConfirmDefaultButton`)、`IUiBackBlocker` と `UiNavigation.HandledBackThisFrame`、方向入力・決定で選び直すときはフレームの最後に行う
+- `UiEventSystemProvider` (EventSystem が無ければシーンをまたいで残るものを用意する。`EnsureEventSystem`)、`UiSafeArea` (`UseSafeArea`)、`UiHoldButton` (長押しで確定)、`IUiPromptProvider` / `IUiPromptService` (操作の案内)、`IPopupService.Changed` / `IScreenService.Changed`、`AbubuUiSettings.DefaultFont` / `DefaultTmpFont` / `WidgetStyle` / トーストのフェード時間
+- `IAppQuitHandler` / `IAppSuspendFinalizer` (中断・終了の通知がすべて終わってから呼ばれる。セーブの Flush に使う)
+- `LocalizationSettings.SaveKey`、`AbubuModules.Pool` (プールを独立して切り替え)、`IAbubuSetupStep` (Setup Project の追加処理)、`Setup Project` で `AbubuUiSettings` / `AbubuInputSettings` を作る、`Validate Setup` の入力・EventSystem の確認
 - 入力: `IInputDeviceService` (デバイスとゲームパッドの種類の判別)、`IHapticsService` (振動)、`InputGlyphs` / `InputGlyphImage` (ボタンのアイコン)、`InputCursorAutoHide`、キー割り当て画面 (`Abubu.Input.UI` の RebindView / RebindPresenter / IRebindView)。ローカライズが有効なら割り当て画面の文言を翻訳する (`LocalizedRebindLabels`)
 - セーブスロット (`ISaveSlotService` / `Saves.Slots`)、非同期のセーブ (`IAsyncSaveService` の SaveAsync / LoadAsync / Flush、バックグラウンドでの書き込み)、保存データの変換 (`ISaveTransform`: `SaveSettings.Compress` の GZip、`AesSaveTransform`)、失敗の通知 (`ISaveFailureNotifier` / `SaveFailureReason`)。アプリの中断・終了時に自動で Flush する
 - ローカライズの拡充: 言語コードの正規化と親言語へのフォールバック (`zh-Hant-TW` → `zh-Hant` → `zh`)、言語ごとの書式 (`CultureInfo`)、名前付きプレースホルダー (`{score}`)、複数形 (`GetPlural` / `Loc.Plural`)、言語ごとのフォント (`LocalizationSettings.Fonts`、`LocalizedText.KeepFont`)、言語ごとのアセット (`LocalizationTable.Assets`、`LocalizedImage` / `LocalizedAudio` / `LocalizedAsset<T>`)、非同期の取得元 (`IAsyncLocalizationSource` / `SetLanguageAsync` / `IsLoading` / `WaitReadyAsync`、起動処理で待つ)、`MissingKeyBehavior`、疑似ローカライズ、`ILocalizationService.Changed`
@@ -78,6 +88,11 @@
 - プールの `IPoolCallbackReceiver` をインスタンス生成時に 1 回だけ集めるように変更 (Rent / Return ごとの GC Alloc を削減)。生成後に追加したコンポーネントには通知されない
 
 ### Fixed
+- 中断時の `OnSuspend` の購読や後から登録した `IAppSuspendHandler` で始まった非同期の書き込みが Flush されない問題 (Flush を最後に行う)
+- 非同期の翻訳の取得元で、起動処理 (Boot) が無効だと翻訳が読み込まれない問題 (Initialize で読み込みを始める)
+- `ISoundService` だけを差し替えると、音量や各プレイヤーが登録されず解決に失敗する問題。`EffectSeHook` は `ISoundService.Se` を使う
+- `SaveSettings.Compress` が、利用者が別の `ISaveTransform` を登録していると無視される問題
+- ゲームパッドでポップアップの裏のボタンに選択が移って押せてしまう問題、方向入力で選び直したときに 2 つ目の項目が選ばれる問題、ポップアップが開いている間に画面の切り替えで選択を奪われる問題
 - ポップアップの OnClosing 内で Pop を呼ぶと無限再帰になる問題 (スタックから外してから閉じるように変更)
 - ポップアップの OnClosing で例外が出ると、そのポップアップが閉じられなくなる問題
 - ポップアップの生成に失敗すると Backdrop だけが残り、画面全体が操作できなくなる問題

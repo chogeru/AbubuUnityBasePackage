@@ -7,9 +7,7 @@
         "Abubu.Save",
         "UniTask",
         "R3.Unity",
-        "Zenject",
-        "UnityEngine.UI",
-        "Unity.TextMeshPro"
+        "Zenject"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -23,9 +21,21 @@
         "ABUBU_DEPS_ZENJECT"
     ],
     "versionDefines": [
-        { "name": "com.cysharp.r3", "expression": "", "define": "ABUBU_DEPS_R3" },
-        { "name": "com.cysharp.unitask", "expression": "", "define": "ABUBU_DEPS_UNITASK" },
-        { "name": "com.svermeulen.extenject", "expression": "", "define": "ABUBU_DEPS_ZENJECT" }
+        {
+            "name": "com.cysharp.r3",
+            "expression": "",
+            "define": "ABUBU_DEPS_R3"
+        },
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "ABUBU_DEPS_UNITASK"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ABUBU_DEPS_ZENJECT"
+        }
     ],
     "noEngineReferences": false
 }

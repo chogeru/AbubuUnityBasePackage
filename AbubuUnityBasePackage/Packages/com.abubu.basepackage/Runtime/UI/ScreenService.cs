@@ -41,6 +41,9 @@ namespace Abubu.UI
         /// <summary>一番手前の画面 (無ければ null)</summary>
         GameObject Current { get; }
 
+        /// <summary>画面が切り替わったとき (開く・戻る・置き換え・閉じる)</summary>
+        Observable<Unit> Changed { get; }
+
         /// <summary>画面を開いて一番手前に表示する。今の画面は非表示になり、Back で戻れる</summary>
         GameObject Push(GameObject prefab);
 
@@ -78,6 +81,10 @@ namespace Abubu.UI
 
         private readonly AbubuUiSettings _settings;
         private readonly IUiFactory _factory;
+        private readonly IPopupService _popups;
+        private readonly UiEventSystemProvider _eventSystems;
+        private readonly IUiInputModeSource _input;
+        private readonly Subject<Unit> _changed = new();
         private readonly UiTransitionRunner _transitions = new();
         private readonly List<Entry> _stack = new();
         private readonly ReactiveProperty<int> _count = new(0);
@@ -86,13 +93,20 @@ namespace Abubu.UI
         private bool _disposing;
 
         public ReadOnlyReactiveProperty<int> Count => _count;
+        public Observable<Unit> Changed => _changed;
         public GameObject Current => _stack.Count > 0 ? _stack[^1].Instance : null;
 
         /// <param name="factory">インスタンスの生成方法。null なら注入なしで Instantiate する (テスト用)</param>
-        public ScreenService([InjectOptional] AbubuUiSettings settings = null, [InjectOptional] IUiFactory factory = null)
+        /// <param name="popups">開いているポップアップから選択を奪わないために使う (任意)</param>
+        public ScreenService([InjectOptional] AbubuUiSettings settings = null, [InjectOptional] IUiFactory factory = null,
+            [InjectOptional] IPopupService popups = null, [InjectOptional] UiEventSystemProvider eventSystems = null,
+            [InjectOptional] IUiInputModeSource input = null)
         {
-            _settings = settings != null ? settings : ScriptableObject.CreateInstance<AbubuUiSettings>();
+            _settings = settings != null ? settings : AbubuUiSettings.Default;
             _factory = factory ?? new ContainerUiFactory();
+            _popups = popups;
+            _eventSystems = eventSystems;
+            _input = input;
             SceneManager.sceneUnloaded += OnSceneUnloaded;
         }
 
@@ -194,6 +208,7 @@ namespace Abubu.UI
             var entries = _stack.ToArray();
             _stack.Clear();
             _count.Value = 0;
+            _changed.OnNext(Unit.Default);
             for (var i = entries.Length - 1; i >= 0; i--) Hide(entries[i], keep: false);
         }
 
@@ -207,6 +222,7 @@ namespace Abubu.UI
             Clear();
             _disposed = true;
             _count.Dispose();
+            _changed.Dispose();
             if (_canvas != null) Object.Destroy(_canvas.gameObject);
         }
 
@@ -231,7 +247,8 @@ namespace Abubu.UI
                 var canvas = _canvas != null
                     ? _canvas
                     : _canvas = UiUtility.CreateCanvas(_settings.ScreenCanvasPrefab, "[Abubu.Screens]", _settings.ScreenSortingOrder, _settings);
-                var instance = _factory.Create(entry.Prefab, canvas.transform);
+                _eventSystems?.Ensure();
+                var instance = _factory.Create(entry.Prefab, UiUtility.ContentRoot(canvas));
                 if (instance == null) throw new InvalidOperationException($"IUiFactory が {entry.Prefab.name} のインスタンスを返しませんでした。");
                 instance.name = entry.Prefab.name;
                 UiDestroyNotifier.Attach(instance, OnScreenDestroyed);
@@ -255,7 +272,9 @@ namespace Abubu.UI
                 }
             }
 
-            UiInitialSelection.Apply(entry.Instance, _settings.SelectFirstOnOpen);
+            // ポップアップが開いている間は、ポップアップの選択を奪わない
+            if (_popups == null || _popups.Count.CurrentValue == 0) UiInitialSelection.ApplyOnOpen(entry.Instance, _settings.SelectOnOpen, _input);
+            _changed.OnNext(Unit.Default);
             // 閉じるアニメーションの途中で戻ってきた場合は、それを取り消して開くアニメーションを再生する
             _transitions.Show(entry.Instance);
         }
@@ -272,6 +291,7 @@ namespace Abubu.UI
             _stack.RemoveAt(index);
             if (wasTop && _stack.Count > 0) Show(_stack[^1]);
             _count.Value = _stack.Count;
+            _changed.OnNext(Unit.Default);
         }
 
         /// <param name="keep">true なら非表示にして残す。false なら破棄する (閉じるアニメーションがあれば、終わってから)</param>
@@ -354,16 +374,20 @@ namespace Abubu
     /// </summary>
     public static class Screens
     {
+        /// <summary>サービス本体。取得できない場合は null (警告を型ごとに 1 回出す)</summary>
         public static IScreenService Service => AbubuServices.TryResolve<IScreenService>();
 
-        public static GameObject Push(GameObject prefab) => Service?.Push(prefab);
-        public static T Push<T>(T prefab) where T : Component => Service?.Push(prefab);
-        public static GameObject Replace(GameObject prefab) => Service?.Replace(prefab);
-        public static bool Back() => Service?.Back() ?? false;
-        public static void BackToRoot() => Service?.BackToRoot();
-        public static void Clear() => Service?.Clear();
-        public static GameObject Current => Service?.Current;
-        public static int Count => Service?.Count.CurrentValue ?? 0;
+        /// <summary>ショートカット内部用。取得できない場合は null で、エラーを型ごとに 1 回出す</summary>
+        private static IScreenService Svc => AbubuServices.ResolveOrLogError<IScreenService>();
+
+        public static GameObject Push(GameObject prefab) => Svc?.Push(prefab);
+        public static T Push<T>(T prefab) where T : Component => Svc?.Push(prefab);
+        public static GameObject Replace(GameObject prefab) => Svc?.Replace(prefab);
+        public static bool Back() => Svc?.Back() ?? false;
+        public static void BackToRoot() => Svc?.BackToRoot();
+        public static void Clear() => Svc?.Clear();
+        public static GameObject Current => Svc?.Current;
+        public static int Count => Svc?.Count.CurrentValue ?? 0;
     }
 
     /// <summary>
@@ -375,18 +399,35 @@ namespace Abubu
     /// </summary>
     public static class UiNavigation
     {
-        /// <summary>一番手前のポップアップを閉じる。ポップアップが無ければ前の画面に戻る。何もしなかったら false</summary>
-        public static bool Back() => Back(Popups.Service, Screens.Service);
+        /// <summary>最後に「戻る」が処理されたフレーム</summary>
+        public static int LastBackFrame { get; private set; } = -1;
 
-        public static bool Back(IPopupService popups, IScreenService screens) =>
-            (popups != null && popups.Pop()) || (screens != null && screens.Back());
+        /// <summary>
+        /// このフレームですでに「戻る」が処理されたか。同じキー (Esc など) でポーズメニューを開く処理は、これが true なら開かない
+        /// (ポップアップを閉じたのと同じフレームで開き直さないように)
+        /// </summary>
+        public static bool HandledBackThisFrame => LastBackFrame == UnityEngine.Time.frameCount;
+
+        /// <summary>一番手前のポップアップを閉じる。ポップアップが無ければ前の画面に戻る。何もしなかったら false</summary>
+        public static bool Back() => Back(AbubuServices.ResolveOrLogError<IPopupService>(), AbubuServices.ResolveOrLogError<IScreenService>());
+
+        public static bool Back(IPopupService popups, IScreenService screens)
+        {
+            var handled = (popups != null && popups.Pop()) || (screens != null && screens.Back());
+            if (handled) LastBackFrame = UnityEngine.Time.frameCount;
+            return handled;
+        }
+
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => LastBackFrame = -1;
 
         /// <summary>
         /// 選択が無い・一番手前の UI の外にある (マウスで背景をクリックした、ポップアップの裏のボタンが選ばれている など) ときに、
         /// 一番手前のポップアップ (無ければ画面) の最初の選択先を選び直す。ゲームパッドの操作を受けたときに呼ぶ
         /// </summary>
         /// <returns>選び直したら true</returns>
-        public static bool EnsureSelection() => EnsureSelection(Popups.Service, Screens.Service);
+        public static bool EnsureSelection() =>
+            EnsureSelection(AbubuServices.ResolveOrLogError<IPopupService>(), AbubuServices.ResolveOrLogError<IScreenService>());
 
         public static bool EnsureSelection(IPopupService popups, IScreenService screens)
         {
