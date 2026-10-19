@@ -19,5 +19,18 @@ abubu.common.yes,Yes,はい
 abubu.common.no,No,いいえ
 abubu.common.back,Back,戻る
 abubu.common.close,Close,閉じる
+abubu.rebind.unbound,-,-
+abubu.rebind.listening,...,...
+abubu.rebind.prompt,"Press a button for ""{0}""",「{0}」に割り当てるボタンを押してください
+abubu.rebind.conflict,Also used by {0},{0} と重複しています
+abubu.rebind.swapped,Swapped with {0},{0} と入れ替えました
+abubu.rebind.rejected,{0} is already used by {1},{0} は {1} で使われています
+abubu.input.action.move,Move,移動
+abubu.input.action.look,Look,視点
+abubu.input.action.jump,Jump,ジャンプ
+abubu.input.action.attack,Attack,攻撃
+abubu.input.action.interact,Interact,調べる
+abubu.input.action.submit,Submit,決定
+abubu.input.action.cancel,Cancel,キャンセル
 language.en,English,English
 language.ja,日本語,日本語

@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### Breaking Changes
+- `IInputService` に `ResetBinding` / `SetBindingOverride` / `SaveBindings` / `BindingsChanged` を追加 (実装している場合は対応が必要)。`RebindAsync` は既定で同じ種類のデバイスの操作だけを受け付ける (`RebindMatchBindingDevice`)
 - `ISaveService.Save` が bool を返すように変更し、`ForceSave<T>` を追加。新しいバージョンで保存されたデータは読み込まず (`TryLoad` が false)、`キー.newer` に 1 回だけ退避する。そのキーへの `Save` は `ForceSave` か `Delete` まで false を返す。`.bak` から復旧しても `.bak` は残す。`Delete` は `.broken` / `.newer` / `.tmp` も消す。File 保存の既定フォルダを `Save` から `AbubuSave` に変更 (既存の設定アセットの値はそのまま)
 - `ISceneService` の Load / LoadWithPayload / Reload / LoadAdditive / Unload が `UniTask<bool>` を返すように変更 (遷移中などで受け付けなかった場合は false)。キャンセル時は元のシーンにフェードで戻ってから `OperationCanceledException` を投げる
 - `IEventBus.Receive` が Subject を返さないように変更 (購読専用)
@@ -20,6 +21,7 @@
 - `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
 
 ### Added
+- 入力: `IInputDeviceService` (デバイスとゲームパッドの種類の判別)、`IHapticsService` (振動)、`InputGlyphs` / `InputGlyphImage` (ボタンのアイコン)、`InputCursorAutoHide`、キー割り当て画面 (`Abubu.Input.UI` の RebindView / RebindPresenter / IRebindView)。ローカライズが有効なら割り当て画面の文言を翻訳する (`LocalizedRebindLabels`)
 - セーブスロット (`ISaveSlotService` / `Saves.Slots`)、非同期のセーブ (`IAsyncSaveService` の SaveAsync / LoadAsync / Flush、バックグラウンドでの書き込み)、保存データの変換 (`ISaveTransform`: `SaveSettings.Compress` の GZip、`AesSaveTransform`)、失敗の通知 (`ISaveFailureNotifier` / `SaveFailureReason`)。アプリの中断・終了時に自動で Flush する
 - ローカライズの拡充: 言語コードの正規化と親言語へのフォールバック (`zh-Hant-TW` → `zh-Hant` → `zh`)、言語ごとの書式 (`CultureInfo`)、名前付きプレースホルダー (`{score}`)、複数形 (`GetPlural` / `Loc.Plural`)、言語ごとのフォント (`LocalizationSettings.Fonts`、`LocalizedText.KeepFont`)、言語ごとのアセット (`LocalizationTable.Assets`、`LocalizedImage` / `LocalizedAudio` / `LocalizedAsset<T>`)、非同期の取得元 (`IAsyncLocalizationSource` / `SetLanguageAsync` / `IsLoading` / `WaitReadyAsync`、起動処理で待つ)、`MissingKeyBehavior`、疑似ローカライズ、`ILocalizationService.Changed`
 - Unity Localization (com.unity.localization) 連携 (`Abubu.Localization.UnityLocalization`、導入時のみ有効)

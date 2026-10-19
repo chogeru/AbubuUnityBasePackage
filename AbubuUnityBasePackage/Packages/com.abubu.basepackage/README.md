@@ -368,6 +368,12 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 - 入力モジュールを使わない場合は、Scripting Define Symbols に `ABUBU_DISABLE_INPUT_MODULE` を追加します。
 - 設定アセット (`AbubuInputSettings`) は `AbubuSettings > Module Settings` に入れるか、`Resources/AbubuInputSettings` に置きます。
 - **以前のバージョンからの移行** : 既定では ActionMap の有効・無効を切り替えなくなりました。ポーズ中に `Player` を無効にしていた場合は、`Pause Disabled Maps` に `Player` を追加してください。
+- **デバイスの判別** : `IInputDeviceService` (`GameInput.Devices`) で最後に操作したデバイス (`CurrentDevice`) とゲームパッドの種類 (`CurrentGamepadKind`: Xbox / PlayStation / Switch / Generic) が分かります。スティックのわずかな揺れで表示が切り替わらないよう、しきい値とちらつき防止が入っています。`GameInput.IsUsingGamepad` / `GameInput.CurrentGamepadKind` でも取れます。
+- **ボタンのアイコン** : `InputGlyphs` (デバイス・ゲームパッドの種類ごとのアイコン表) を用意し、`InputGlyphImage` を Image に付けると、操作中のデバイスに合わせたボタンのアイコンを表示します。コードからは `GameInput.GetGlyph`。
+- **振動** : `IHapticsService` (`GameInput.Haptics` / `GameInput.Rumble` / `GameInput.StopRumble`) で Light / Medium / Heavy などのプリセットを鳴らせます。全体の強さとオン・オフは保存され、ポーズ中・フォーカスが外れている間は止まります。
+- **キー割り当て画面** : `Abubu.Input.UI` の `RebindView` / `RebindPresenter` (View は `IRebindView` で差し替え可) で、キー・ボタンの割り当て画面を作れます。重複したときの扱い (Allow / Swap / Reject)、複合入力 (WASD など) に対応しています。ローカライズが有効なら、文言は翻訳テーブルの `abubu.rebind.*` と `abubu.input.action.*` (例: `abubu.input.action.jump`) から取ります (`AbubuBuiltInStrings.csv` に英語・日本語あり)。
+- `InputCursorAutoHide` (既定オフ) で、ゲームパッド操作中にマウスカーソルを隠せます。
+- **以前のバージョンからの移行 (割り当て)** : `IInputService` に `ResetBinding` / `SetBindingOverride` / `SaveBindings` / `BindingsChanged` が増えました。`RebindAsync` は既定で、同じ種類のデバイスの操作だけを受け付けます (`RebindMatchBindingDevice`)。
 
 ### ポーズ
 

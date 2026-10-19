@@ -10,7 +10,9 @@
         "Unity.InputSystem",
         "UniTask",
         "R3.Unity",
-        "Zenject"
+        "Zenject",
+        "Abubu.Input.UI",
+        "Abubu.Presentation"
     ],
     "includePlatforms": [
         "Editor"
@@ -51,6 +53,16 @@
             "name": "com.svermeulen.extenject",
             "expression": "",
             "define": "ABUBU_DEPS_ZENJECT"
+        },
+        {
+            "name": "com.annulusgames.lit-motion",
+            "expression": "",
+            "define": "ABUBU_DEPS_LITMOTION"
+        },
+        {
+            "name": "com.annulusgames.u-pools",
+            "expression": "",
+            "define": "ABUBU_DEPS_UPOOLS"
         }
     ],
     "noEngineReferences": false
