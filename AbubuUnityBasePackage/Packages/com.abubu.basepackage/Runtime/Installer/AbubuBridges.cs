@@ -5,6 +5,7 @@ using Abubu.Effects;
 using Abubu.Graphics;
 using Abubu.Pause;
 using Abubu.Pool;
+using Abubu.Save;
 using Abubu.Scene;
 using R3;
 using UnityEngine;
@@ -143,6 +144,29 @@ namespace Abubu
             _volume?.Save();
             _graphics?.Save();
         }
+    }
+
+    /// <summary>
+    /// 中断時・終了時に、バックグラウンドで書き込み中のセーブを終わらせる (書き込みの途中でアプリが落とされないように)。
+    /// 中断のきっかけ (SuspendTriggers) に Quit が含まれていなくても、終了時は必ず待つ
+    /// </summary>
+    internal sealed class SaveFlushOnSuspend : IAppSuspendHandler, IInitializable, IDisposable
+    {
+        private readonly ISaveService _save;
+        private readonly IAppLifecycle _app;
+        private IDisposable _subscription;
+
+        public SaveFlushOnSuspend(ISaveService save, IAppLifecycle app)
+        {
+            _save = save;
+            _app = app;
+        }
+
+        public void Initialize() => _subscription = _app.OnQuit.Subscribe(this, static (_, self) => self._save.Flush());
+
+        public void OnSuspend() => _save.Flush();
+
+        public void Dispose() => _subscription?.Dispose();
     }
 
     /// <summary>フォーカスが外れている間のポーズ・消音 (AppSettings.PauseOnFocusLost / MuteOnFocusLost)</summary>

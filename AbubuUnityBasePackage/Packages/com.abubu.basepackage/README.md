@@ -326,6 +326,27 @@ public sealed class ProgressV1ToV2 : SaveMigration<Progress>
 
 - 独自の保存先 (クラウド等) は `ISaveStorage` を実装し、AbubuInstaller より前にバインドして差し替えます。
 
+**セーブスロット**
+
+```csharp
+Saves.Slots.Switch(1);                         // スロット 1 を使う
+Saves.Slots.Save("progress", progress);        // 今のスロットに保存
+var data = Saves.Slots.Load("progress", new Progress());
+foreach (var slot in Saves.Slots.List()) { /* セーブ画面の一覧 (要約・プレイ時間) */ }
+Saves.Slots.SetSummary("ステージ 3");
+Saves.Slots.AddPlayTime(Time.unscaledDeltaTime);
+Saves.Slots.Copy(1, 2);
+Saves.Slots.DeleteSlot(2);
+```
+
+- `ISaveSlotService` はスロットごとのデータ、`ISaveService` そのものはスロットに関係ない「共通の領域」です (音量などの設定は共通の領域に保存されます)。スロット数などは `SaveSettings.Slots` で設定します。
+
+**非同期・変換・失敗の通知**
+
+- `SaveAsync` / `LoadAsync` (`IAsyncSaveService`) はファイルの書き込みをバックグラウンドで行います。中断・終了時には自動で `Flush` して書き込みを終わらせます (ライフサイクルが有効なとき)。
+- `ISaveTransform` で保存する文字列を変換できます。`SaveSettings.Compress` で GZip 圧縮、`AesSaveTransform` に自分の鍵を渡すと暗号化 (簡単な改ざん防止) になります。
+- 保存・読み込みに失敗すると `ISaveFailureNotifier.SaveFailed` に理由 (`SaveFailureReason`: DiskFull / AccessDenied / Corrupted / NewerVersion など) が流れます。「容量が足りません」のような表示に使えます。
+
 ### イベントバス
 
 - `IEventBus` / `GameEvents` は型登録不要。手早く使いたい時向け。`Receive<T>()` は購読専用の Observable を返します。

@@ -82,6 +82,8 @@ namespace Abubu
             {
                 container.BindInterfacesTo<AppFocusBridge>().AsSingle();
                 if (settings.App.SaveSettingsOnSuspend) container.Bind<IAppSuspendHandler>().To<SettingsSaveOnSuspend>().AsSingle();
+                // 上の保存処理のあとに呼ばれるよう、最後に登録する (バックグラウンドの書き込みを終わらせる)
+                container.BindInterfacesTo<SaveFlushOnSuspend>().AsSingle();
             }
 
             // --- 任意モジュール (UI / Input / MessagePipe / Addressables など。導入されていれば自動で有効) ---

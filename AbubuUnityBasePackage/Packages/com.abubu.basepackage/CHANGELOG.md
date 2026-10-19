@@ -20,6 +20,7 @@
 - `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
 
 ### Added
+- セーブスロット (`ISaveSlotService` / `Saves.Slots`)、非同期のセーブ (`IAsyncSaveService` の SaveAsync / LoadAsync / Flush、バックグラウンドでの書き込み)、保存データの変換 (`ISaveTransform`: `SaveSettings.Compress` の GZip、`AesSaveTransform`)、失敗の通知 (`ISaveFailureNotifier` / `SaveFailureReason`)。アプリの中断・終了時に自動で Flush する
 - ローカライズの拡充: 言語コードの正規化と親言語へのフォールバック (`zh-Hant-TW` → `zh-Hant` → `zh`)、言語ごとの書式 (`CultureInfo`)、名前付きプレースホルダー (`{score}`)、複数形 (`GetPlural` / `Loc.Plural`)、言語ごとのフォント (`LocalizationSettings.Fonts`、`LocalizedText.KeepFont`)、言語ごとのアセット (`LocalizationTable.Assets`、`LocalizedImage` / `LocalizedAudio` / `LocalizedAsset<T>`)、非同期の取得元 (`IAsyncLocalizationSource` / `SetLanguageAsync` / `IsLoading` / `WaitReadyAsync`、起動処理で待つ)、`MissingKeyBehavior`、疑似ローカライズ、`ILocalizationService.Changed`
 - Unity Localization (com.unity.localization) 連携 (`Abubu.Localization.UnityLocalization`、導入時のみ有効)
 - 翻訳テーブルの CSV / TSV 書き出し・読み込み (Tools > Abubu > Localization)、`Validate Setup` で LocalizedText のキーの存在を確認

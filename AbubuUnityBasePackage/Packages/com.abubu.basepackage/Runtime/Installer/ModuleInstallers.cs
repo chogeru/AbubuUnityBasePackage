@@ -42,7 +42,11 @@ namespace Abubu.Installers
             container.BindInstance(settings).IfNotBound();
             container.Bind<ISaveStorage>().FromMethod(() => SaveService.CreateStorage(settings)).AsSingle().IfNotBound();
             container.Bind<ISaveSerializer>().FromMethod(() => new JsonUtilitySaveSerializer(settings.PrettyPrint)).AsSingle().IfNotBound();
-            if (!container.HasBinding<ISaveService>()) container.Bind<ISaveService>().To<SaveService>().AsSingle();
+            if (settings.Compress && !container.HasBinding<ISaveTransform>()) container.Bind<ISaveTransform>().To<GZipSaveTransform>().AsSingle();
+            // ISaveService + IAsyncSaveService + ISaveFailureNotifier
+            if (!container.HasBinding<ISaveService>()) container.BindInterfacesTo<SaveService>().AsSingle();
+            container.BindInstance(settings.Slots ?? new SaveSlotOptions()).IfNotBound();
+            if (!container.HasBinding<ISaveSlotService>()) container.Bind<ISaveSlotService>().To<SaveSlotService>().AsSingle();
         }
     }
 
