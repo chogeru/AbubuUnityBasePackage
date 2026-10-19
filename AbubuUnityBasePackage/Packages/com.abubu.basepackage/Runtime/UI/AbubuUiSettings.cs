@@ -47,7 +47,32 @@ namespace Abubu.UI
         [Tooltip("次の画面を開いたとき、前の画面を非表示にして残す (戻ったときにスクロール位置などが残る)。オフなら破棄し、戻るときに作り直す")]
         public bool KeepPreviousScreens = true;
 
+        [Header("Dialog / Toast")]
+        [Tooltip("Popups.Confirm / Alert で使う確認ダイアログのプレハブ (任意)。未設定なら組み込みの見た目を使う")]
+        public UiConfirmDialog ConfirmDialogPrefab;
+
+        [Tooltip("Popups.Toast で使うトーストのプレハブ (任意)。未設定なら組み込みの見た目を使う")]
+        public UiToast ToastPrefab;
+
+        [Tooltip("トーストを表示する秒数")]
+        [Min(0f)] public float ToastDuration = 2f;
+
+        [Tooltip("ダイアログの OK ボタンの文言 (ローカライズが有効なら abubu.common.ok が優先)")]
+        public string OkLabel = "OK";
+
+        [Tooltip("ダイアログの Cancel ボタンの文言 (ローカライズが有効なら abubu.common.cancel が優先)")]
+        public string CancelLabel = "Cancel";
+
         [Header("Navigation")]
+        [Tooltip("ポップアップ・画面を開いたとき、UI Initial Selection が無くても最初のボタンを選択する (ゲームパッド中心のゲーム向け)")]
+        public bool SelectFirstOnOpen;
+
+        [Tooltip("ゲームパッド・キーボードで方向入力したとき、選択が無い・一番手前の UI の外にあれば選び直す (Input System 導入時)")]
+        public bool KeepFocusOnNavigate = true;
+
+        [Tooltip("方向入力の Input Action のパス (Keep Focus On Navigate で使う)")]
+        public string NavigateActionPath = "UI/Navigate";
+
         [Tooltip("Cancel 入力 (Esc / ゲームパッドの B など) で、一番手前のポップアップを閉じる。ポップアップが無ければ前の画面に戻る (Input System 導入時)")]
         public bool BackOnCancel;
     }

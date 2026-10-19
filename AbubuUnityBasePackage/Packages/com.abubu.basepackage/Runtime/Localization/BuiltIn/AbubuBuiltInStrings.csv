@@ -1,0 +1,23 @@
+key,en,ja
+# パッケージの UI (画面設定パネルなど) が使う文言。翻訳テーブルの Csv Sources に追加すると使われる。自分のテーブルに同じキーを書けば上書きできる,,
+abubu.graphics.resolution,{0} x {1},{0} x {1}
+abubu.graphics.window.exclusive,Exclusive Fullscreen,フルスクリーン (排他)
+abubu.graphics.window.fullscreen,Fullscreen,フルスクリーン
+abubu.graphics.window.borderless,Borderless,ボーダーレス
+abubu.graphics.window.windowed,Windowed,ウィンドウ
+abubu.graphics.fps,{0} FPS,{0} FPS
+abubu.graphics.fps.unlimited,Unlimited,無制限
+abubu.graphics.quality.very_low,Very Low,最低
+abubu.graphics.quality.low,Low,低
+abubu.graphics.quality.medium,Medium,中
+abubu.graphics.quality.high,High,高
+abubu.graphics.quality.very_high,Very High,最高
+abubu.graphics.quality.ultra,Ultra,ウルトラ
+abubu.common.ok,OK,OK
+abubu.common.cancel,Cancel,キャンセル
+abubu.common.yes,Yes,はい
+abubu.common.no,No,いいえ
+abubu.common.back,Back,戻る
+abubu.common.close,Close,閉じる
+language.en,English,English
+language.ja,日本語,日本語

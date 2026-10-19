@@ -45,6 +45,9 @@ namespace Abubu.UI
         /// <summary>開いているポップアップの数</summary>
         ReadOnlyReactiveProperty<int> Count { get; }
 
+        /// <summary>一番手前のポップアップ (無ければ null)</summary>
+        GameObject Current { get; }
+
         /// <summary>プレハブをポップアップ用 Canvas の下に生成して一番手前に表示する</summary>
         GameObject Push(GameObject prefab);
 
@@ -88,6 +91,15 @@ namespace Abubu.UI
         private bool _disposing;
 
         public ReadOnlyReactiveProperty<int> Count => _count;
+
+        public GameObject Current
+        {
+            get
+            {
+                PurgeDestroyed();
+                return _stack.Count > 0 ? _stack[^1].Popup : null;
+            }
+        }
 
         /// <param name="factory">インスタンスの生成方法。null なら注入なしで Instantiate する (テスト用)</param>
         public PopupService([InjectOptional] IPauseService pause = null, [InjectOptional] AbubuUiSettings settings = null,
@@ -155,7 +167,7 @@ namespace Abubu.UI
                 }
             }
 
-            UiInitialSelection.Apply(popup);
+            UiInitialSelection.Apply(popup, _settings.SelectFirstOnOpen);
             _transitions.Show(popup);
             return popup;
         }
@@ -358,6 +370,8 @@ namespace Abubu.UI
             container.Bind<IUiFactory>().To<ContainerUiFactory>().AsSingle().IfNotBound();
             if (!container.HasBinding<IPopupService>()) container.BindInterfacesTo<PopupService>().AsSingle().WithArguments(settings);
             if (!container.HasBinding<IScreenService>()) container.BindInterfacesTo<ScreenService>().AsSingle().WithArguments(settings);
+            if (!container.HasBinding<IDialogService>()) container.BindInterfacesTo<DialogService>().AsSingle().WithArguments(settings);
+            if (!container.HasBinding<IToastService>()) container.BindInterfacesTo<ToastService>().AsSingle().WithArguments(settings);
         }
 
         /// <summary>
@@ -375,12 +389,16 @@ namespace Abubu.UI
 
 namespace Abubu
 {
+    using System.Threading;
     using Abubu.UI;
+    using Cysharp.Threading.Tasks;
 
     /// <summary>
     /// ポップアップの static ショートカット。
     /// <code>
-    /// Popups.Push(confirmDialogPrefab);
+    /// if (await Popups.Confirm("削除しますか？")) Delete();
+    /// Popups.Toast("保存しました");
+    /// Popups.Push(settingsPopupPrefab);
     /// Popups.Pop();
     /// </code>
     /// </summary>
@@ -394,5 +412,18 @@ namespace Abubu
         public static bool Close(GameObject popup) => Service?.Close(popup) ?? false;
         public static void PopAll() => Service?.PopAll();
         public static int Count => Service?.Count.CurrentValue ?? 0;
+        public static GameObject Current => Service?.Current;
+
+        /// <summary>OK / Cancel の確認ダイアログ。OK なら true</summary>
+        public static UniTask<bool> Confirm(string message, string title = null, string ok = null, string cancel = null,
+            CancellationToken ct = default) =>
+            AbubuServices.TryResolve<IDialogService>()?.ConfirmAsync(message, title, ok, cancel, ct) ?? UniTask.FromResult(false);
+
+        /// <summary>OK だけのダイアログ。閉じられるまで待つ</summary>
+        public static UniTask Alert(string message, string title = null, string ok = null, CancellationToken ct = default) =>
+            AbubuServices.TryResolve<IDialogService>()?.AlertAsync(message, title, ok, ct) ?? UniTask.CompletedTask;
+
+        /// <summary>数秒で消える短い通知</summary>
+        public static void Toast(string message, float? duration = null) => AbubuServices.TryResolve<IToastService>()?.Show(message, duration);
     }
 }

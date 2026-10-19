@@ -18,6 +18,7 @@
         "Abubu.App",
         "Abubu.UI",
         "R3.Unity",
+        "UniTask",
         "Zenject"
     ],
     "includePlatforms": [],

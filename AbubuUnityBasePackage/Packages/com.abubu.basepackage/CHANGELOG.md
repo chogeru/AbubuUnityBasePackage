@@ -20,6 +20,14 @@
 - `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
 
 ### Added
+- ローカライズの拡充: 言語コードの正規化と親言語へのフォールバック (`zh-Hant-TW` → `zh-Hant` → `zh`)、言語ごとの書式 (`CultureInfo`)、名前付きプレースホルダー (`{score}`)、複数形 (`GetPlural` / `Loc.Plural`)、言語ごとのフォント (`LocalizationSettings.Fonts`、`LocalizedText.KeepFont`)、言語ごとのアセット (`LocalizationTable.Assets`、`LocalizedImage` / `LocalizedAudio` / `LocalizedAsset<T>`)、非同期の取得元 (`IAsyncLocalizationSource` / `SetLanguageAsync` / `IsLoading` / `WaitReadyAsync`、起動処理で待つ)、`MissingKeyBehavior`、疑似ローカライズ、`ILocalizationService.Changed`
+- Unity Localization (com.unity.localization) 連携 (`Abubu.Localization.UnityLocalization`、導入時のみ有効)
+- 翻訳テーブルの CSV / TSV 書き出し・読み込み (Tools > Abubu > Localization)、`Validate Setup` で LocalizedText のキーの存在を確認
+- 字幕 (`ISubtitleService` / `SubtitleText`)。ボイスの再生に合わせて Subtitle Key の翻訳を表示する
+- パッケージ自身の文言 (画面設定の選択肢・ダイアログのボタン) のローカライズと、英語・日本語の組み込み文言 (`AbubuBuiltInStrings.csv`)。`Integration.LocalizePackageUi` で無効化できる
+- `Popups.Confirm` / `Popups.Alert` / `Popups.Toast` (`IDialogService` / `IToastService`)。設定不要の組み込みの見た目と、`Tools > Abubu > Create UI Templates` によるプレハブ化
+- コントローラー対応: `UiNavigation.EnsureSelection`、方向入力・ゲームパッドへの持ち替え時に一番手前の UI を選び直す (`KeepFocusOnNavigate`)、`SelectFirstOnOpen`、`UiScrollToSelection`、`IPopupService.Current`
+- `Edit > Project Settings > Abubu` (`AbubuEditorSettings`) : Setup Project の出力先、Generate Keys の出力先・名前空間・asmdef 生成・Packages の検索
 - ログ (`AbubuLog` / `LogChannel`) : カテゴリ別の ON/OFF、最低レベル、リリースビルドでの Debug / Info の除去 (`ABUBU_LOG_VERBOSE` で残せる)、ログのファイル出力 (`AbubuSettings > Log`)
 - ローカライズ (`ILocalizationService` / `Loc` / `LocalizationTable` / `LocalizedText`) : ScriptableObject と CSV の翻訳テーブル、端末言語の判定、選んだ言語の保存、フォールバック、取得元の差し替え (`ILocalizationSource`)。`Validate Setup` の未翻訳チェックと `Generate Keys` の `LocKeys`、`Setup Project` での `LocalizationTable.asset` の生成
 - アプリのライフサイクル (`IAppLifecycle` / `AppLifecycle` / `IAppSuspendHandler`) : 中断・復帰・終了の通知、中断時の自動保存 (`SuspendTriggers` で選択)、フォーカス喪失時のポーズ・消音 (既定オフ)
@@ -53,6 +61,9 @@
 - `DebugOverlay` のキー切り替えが新 Input System のみのプロジェクトでも動作
 
 ### Changed
+- `Generate Keys` で別のキーが同じ定数名になる場合、連番ではなくキーから計算した固定の接尾辞を付けるように変更 (キーを追加しても既存の定数名が変わらない)。定数の並び順は定数名順になる
+- `Validate Setup` の Missing Script の検出で、プロジェクトの全スクリプトを読み込まないように変更 (対象の型の名前で絞り込む)
+- `LocalizationService` の書式化で、値の無いプレースホルダーをエラーにせずそのまま残すように変更
 - Abubu.Audio が uPools に依存しないように変更
 - プールで親を指定せずに借りたオブジェクトをアクティブなシーンに置くように変更 (以前は DontDestroyOnLoad)
 - `BootPlayModeHook` が他の拡張の `playModeStartScene` を上書きしないように変更

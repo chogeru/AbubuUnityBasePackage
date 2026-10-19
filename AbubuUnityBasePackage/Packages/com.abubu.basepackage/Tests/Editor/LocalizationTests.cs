@@ -110,16 +110,17 @@ namespace Abubu.Tests
         }
 
         [Test]
-        public void InvalidFormat_ReturnsRawText()
+        public void MissingPlaceholderValue_IsKeptAsIs()
         {
             var source = new DictionarySource(new Dictionary<string, Dictionary<string, string>>
             {
-                ["ja"] = new() { ["bad"] = "値: {1}" },
+                ["ja"] = new() { ["bad"] = "値: {1} {0" },
             });
             using var loc = new LocalizationService(source, new LocalizationSettings { RememberLanguage = false });
 
-            LogAssert.Expect(LogType.Error, new Regex("\"bad\" の書式が不正です"));
-            Assert.That(loc.Get("bad", 1), Is.EqualTo("値: {1}"));
+            // 翻訳者のミスで例外にならず、値の無いプレースホルダーと閉じていない波かっこはそのまま残る
+            Assert.That(loc.Get("bad", 1), Is.EqualTo("値: {1} {0"));
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]

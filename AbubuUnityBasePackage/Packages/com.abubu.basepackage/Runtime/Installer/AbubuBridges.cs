@@ -66,6 +66,7 @@ namespace Abubu
         private readonly ISoundService _sound;
         private readonly SoundSettings _settings;
         private IDisposable _subscription;
+        private IDisposable _pauseSnapshot;
 
         public AudioPauseBridge(IPauseService pause, ISoundService sound, SoundSettings settings)
         {
@@ -87,9 +88,27 @@ namespace Abubu
             if (_settings.PauseSe) _sound.Se.SetPaused(paused);
             if (_settings.PauseAmbient) _sound.Ambient.SetPaused(paused);
             if (_settings.PauseVoice) _sound.Voice.SetPaused(paused);
+
+            // ポーズ中だけミキサーのスナップショットを切り替える (SoundSettings.PauseSnapshotName)
+            if (!string.IsNullOrEmpty(_settings.PauseSnapshotName))
+            {
+                if (paused)
+                {
+                    _pauseSnapshot ??= _sound.Snapshots.Push(_settings.PauseSnapshotName, _settings.PauseSnapshotDuration);
+                }
+                else
+                {
+                    _pauseSnapshot?.Dispose();
+                    _pauseSnapshot = null;
+                }
+            }
         }
 
-        public void Dispose() => _subscription?.Dispose();
+        public void Dispose()
+        {
+            _subscription?.Dispose();
+            _pauseSnapshot?.Dispose();
+        }
     }
 
     /// <summary>EffectLibrary の SeKey をエフェクトの位置で鳴らす</summary>

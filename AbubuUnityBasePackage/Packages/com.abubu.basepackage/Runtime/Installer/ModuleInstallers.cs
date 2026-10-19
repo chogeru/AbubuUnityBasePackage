@@ -62,6 +62,7 @@ namespace Abubu.Installers
             container.BindInterfacesTo<SePlayer>().AsSingle();
             container.BindInterfacesTo<AmbientPlayer>().AsSingle();
             container.BindInterfacesTo<VoicePlayer>().AsSingle();
+            container.Bind<IAudioMixerSnapshotService>().To<AudioMixerSnapshotService>().AsSingle().IfNotBound();
             container.Bind<ISoundService>().To<SoundService>().AsSingle();
         }
     }
@@ -137,8 +138,13 @@ namespace Abubu.Installers
         {
             settings ??= new LocalizationSettings();
             container.BindInstance(settings).IfNotBound();
-            container.Bind<ILocalizationSource>().FromMethod(() => new TableLocalizationSource(settings.Table)).AsSingle().IfNotBound();
+            if (!container.HasBinding<ILocalizationSource>())
+            {
+                container.Bind<ILocalizationSource>().FromMethod(() => new TableLocalizationSource(settings.Table)).AsSingle();
+                container.BindInstance(new DefaultLocalizationSourceMarker());
+            }
             if (!container.HasBinding<ILocalizationService>()) container.BindInterfacesTo<LocalizationService>().AsSingle();
+            if (!container.HasBinding<ISubtitleService>()) container.BindInterfacesTo<SubtitleService>().AsSingle();
         }
     }
 }

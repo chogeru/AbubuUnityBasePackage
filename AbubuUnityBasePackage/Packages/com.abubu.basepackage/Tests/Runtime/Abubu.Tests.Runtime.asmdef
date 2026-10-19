@@ -12,6 +12,10 @@
         "uPools",
         "Abubu.Pause",
         "Abubu.UI",
+        "Abubu.Scene",
+        "Abubu.Debugging",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
         "R3.Unity"
     ],
     "includePlatforms": [],

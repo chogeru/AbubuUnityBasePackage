@@ -11,6 +11,7 @@ using Abubu.Pool;
 using Abubu.Presentation;
 using Abubu.Save;
 using Abubu.Scene;
+using Abubu.UI;
 using System;
 using UnityEngine;
 using Zenject;
@@ -64,6 +65,19 @@ namespace Abubu
             if (modules.Sound && modules.Effects) container.Bind<IEffectPlayHook>().To<EffectSeHook>().AsSingle();
             if (modules.Scene && modules.Effects) container.BindInterfacesTo<PoolSceneBridge>().AsSingle();
             if (modules.Scene && settings.Integration.ResumePauseOnSceneChange) container.BindInterfacesTo<PauseSceneBridge>().AsSingle();
+            if (modules.Localization)
+            {
+                if (modules.Boot && modules.Scene) container.Bind<IBootTask>().To<LocalizationBootTask>().AsSingle();
+                if (modules.Graphics && settings.Integration.LocalizePackageUi && !container.HasBinding<IGraphicsSettingsLabels>())
+                {
+                    container.Bind<IGraphicsSettingsLabels>().To<LocalizedGraphicsSettingsLabels>().AsSingle();
+                }
+                if (settings.Integration.LocalizePackageUi && !container.HasBinding<IDialogLabels>())
+                {
+                    container.Bind<IDialogLabels>().To<LocalizedDialogLabels>().AsSingle();
+                }
+                if (modules.Sound) container.BindInterfacesTo<VoiceSubtitleBridge>().AsSingle().NonLazy();
+            }
             if (modules.AppLifecycle)
             {
                 container.BindInterfacesTo<AppFocusBridge>().AsSingle();

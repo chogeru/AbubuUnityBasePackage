@@ -49,8 +49,9 @@ namespace Abubu.UI
         public void Install(DiContainer container)
         {
             var settings = UiModuleInstaller.ResolveSettings(container);
-            if (settings == null || !settings.BackOnCancel) return;
-            container.BindInterfacesTo<UiCancelBridge>().AsSingle().NonLazy();
+            if (settings != null && settings.BackOnCancel) container.BindInterfacesTo<UiCancelBridge>().AsSingle().NonLazy();
+            // 設定アセットが無いときは既定値 (KeepFocusOnNavigate = オン) に従う
+            if (settings == null || settings.KeepFocusOnNavigate) container.BindInterfacesTo<UiFocusBridge>().AsSingle().NonLazy();
         }
     }
 }

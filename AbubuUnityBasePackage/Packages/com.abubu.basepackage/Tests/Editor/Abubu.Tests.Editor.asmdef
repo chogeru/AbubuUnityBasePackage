@@ -21,6 +21,7 @@
         "Abubu.Graphics",
         "Abubu.Presentation",
         "Zenject",
+        "UnityEngine.UI",
         "R3.Unity"
     ],
     "includePlatforms": [

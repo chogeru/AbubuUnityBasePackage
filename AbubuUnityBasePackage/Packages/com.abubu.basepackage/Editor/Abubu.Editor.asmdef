@@ -11,6 +11,8 @@
         "Abubu.Boot",
         "Abubu.Presentation",
         "Abubu.Localization",
+        "Abubu.UI",
+        "Abubu.Save",
         "Zenject",
         "UnityEngine.UI"
     ],

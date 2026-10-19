@@ -7,7 +7,8 @@
         "UniTask",
         "R3.Unity",
         "Zenject",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

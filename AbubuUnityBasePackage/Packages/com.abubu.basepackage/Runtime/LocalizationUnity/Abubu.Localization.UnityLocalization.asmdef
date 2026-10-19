@@ -1,0 +1,31 @@
+{
+    "name": "Abubu.Localization.UnityLocalization",
+    "rootNamespace": "Abubu",
+    "references": [
+        "Abubu.Core",
+        "Abubu.Localization",
+        "UniTask",
+        "Zenject",
+        "Unity.Localization",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ABUBU_UNITY_LOCALIZATION",
+        "ABUBU_DEPS_R3",
+        "ABUBU_DEPS_UNITASK",
+        "ABUBU_DEPS_ZENJECT"
+    ],
+    "versionDefines": [
+        { "name": "com.unity.localization", "expression": "", "define": "ABUBU_UNITY_LOCALIZATION" },
+        { "name": "com.cysharp.r3", "expression": "", "define": "ABUBU_DEPS_R3" },
+        { "name": "com.cysharp.unitask", "expression": "", "define": "ABUBU_DEPS_UNITASK" },
+        { "name": "com.svermeulen.extenject", "expression": "", "define": "ABUBU_DEPS_ZENJECT" }
+    ],
+    "noEngineReferences": false
+}

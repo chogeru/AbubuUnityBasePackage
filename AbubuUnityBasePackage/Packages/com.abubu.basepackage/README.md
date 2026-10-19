@@ -107,8 +107,13 @@ var best = Saves.Load("highscore", 0);
 var move = GameInput.Move;
 GameInput.Jump.Subscribe(_ => Jump()).AddTo(this);
 
+// ダイアログ / トースト (設定不要。見た目はプレハブで差し替え可)
+if (await Popups.Confirm("セーブデータを削除しますか？")) DeleteSave();
+await Popups.Alert("通信に失敗しました", title: "エラー");
+Popups.Toast("保存しました");
+
 // ポップアップ
-Popups.Push(confirmDialogPrefab);
+Popups.Push(settingsPopupPrefab);
 Popups.Pop();
 
 // 画面遷移 (戻れる履歴つき)
@@ -118,7 +123,8 @@ UiNavigation.Back();   // ポップアップがあれば閉じ、無ければ前
 
 // ローカライズ
 label.text = Loc.Get("menu.start");
-label.text = Loc.Get("result.score", score);   // "スコア: {0}"
+label.text = Loc.Get("result.score", score);   // "スコア: {0:N0}" → 言語に合った桁区切り
+label.text = Loc.Plural("item.count", count);  // item.count.one / item.count.other から選ぶ
 Loc.SetLanguage("en");
 
 // ライフサイクル (バックグラウンドに回る・終了する直前)
@@ -131,7 +137,10 @@ AbubuLog.Debug("AI", $"target = {target}");   // リリースビルドでは呼�
 
 ### キーの定数化
 
-`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary / Build Profiles のシーン一覧から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリやシーン一覧を編集したら再実行してください)。
+`"jump"` のような文字列は打ち間違いが実行時まで分かりません。`Tools > Abubu > Generate Keys` を実行すると、SoundLibrary / EffectLibrary / LocalizationTable / Build Profiles のシーン一覧から定数クラスが `Assets/Abubu/Generated/AbubuKeys.cs` に生成されます (ライブラリやシーン一覧を編集したら再実行してください)。
+
+- 出力先・名前空間・asmdef の生成 (asmdef で分割したプロジェクトから参照するため)・Packages 以下も探すかは `Edit > Project Settings > Abubu` で設定します。設定は `ProjectSettings/AbubuEditorSettings.asset` に保存されるので、git で共有できます。
+- 別のキーが同じ定数名になる場合 (`menu_start` と `menu.start` など) は、文字列順で最初のキー以外にキーから計算した固定の接尾辞 (`MenuStart_1a2b`) が付きます。関係ないキーを追加しても、既存の定数名は変わりません。
 
 ```csharp
 Sound.PlaySe(SoundKeys.Se.Jump);
@@ -275,6 +284,10 @@ public sealed class LoadCatalogTask : IBootTask
 - キー管理が面倒なら `Sound.PlaySe(audioClip)` のように AudioClip を直接渡しても鳴らせます。
 - `IBootTask` でクラウドセーブの取得やセーブスロットの選択をしたあとに音量を読み直す場合は、`AudioVolumeModel.Reload()` を呼びます。
 - `SePoolPrewarm` を 0 にすると、音を鳴らすまでサウンド用の GameObject は作られません。
+- **メモリ** : `SoundSettings.UseAddressableClips` をオンにすると、`SoundEntry.Address` から Addressables で読み込みます (`IAudioClipProvider` で差し替え可)。`Sound.Preload` / `Sound.Unload` (`ISoundService.PreloadAsync` / `Unload`) で読み込み・解放のタイミングを指定できます。
+- `Sound.PlayAttached` (動くオブジェクトに追従する SE)・`Sound.StopSe` / `Sound.StopAll` (`ISePlayer.Stop(SeHandle)`) で止められます。
+- **スナップショット** : `Sound.Snapshot` (`IAudioMixerSnapshotService.TransitionTo` / `Push`) で AudioMixer のスナップショットを切り替えます。`SoundSettings.PauseSnapshotName` を設定すると、ポーズ中だけそのスナップショットになります (Mixer 未設定なら何もしません)。
+- **ボイスと字幕** : `IVoicePlayer.OnVoiceStarted` / `OnVoiceEnded` (`Sound.OnVoiceStarted`) でボイスの開始・終了が分かります。ローカライズが有効なら、SoundLibrary の `Subtitle Key` を翻訳した字幕が `ISubtitleService` に流れるので、`Subtitle Text` コンポーネントを置くだけで表示できます (下の「字幕」)。
 
 ### 画面設定
 
@@ -344,15 +357,20 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 ### ポップアップ
 
 ```csharp
-var dialog = _popups.Push(confirmDialogPrefab);   // 専用 Canvas の下に生成され、背面は操作できなくなる
-_popups.Pop();                                    // 一番手前を閉じる
+if (await _dialogs.ConfirmAsync("削除しますか？")) Delete();   // IDialogService (= Popups.Confirm)
+_toasts.Show("保存しました");                                    // IToastService (= Popups.Toast)
+
+var popup = _popups.Push(settingsPopupPrefab);   // 専用 Canvas の下に生成され、背面は操作できなくなる
+_popups.Close(popup);                            // 指定したものだけ閉じる
+_popups.Pop();                                   // 一番手前を閉じる
 _popups.PopAll();
 ```
 
+- **確認ダイアログ / トースト** は設定なしで使えます (組み込みの見た目をコードで組み立てます)。見た目を変えるには `Tools > Abubu > Create UI Templates` でプレハブを書き出して編集するか、`UiConfirmDialog` / `UiToast` を付けた自分のプレハブを `AbubuUiSettings > Confirm Dialog Prefab` / `Toast Prefab` に指定します。組み込みの見た目は Unity 標準のフォントなので、日本語などはテンプレートのフォントを差し替えてください。
+- ダイアログは OK 以外 (Cancel・Cancel 入力・背面クリック・シーン切り替え) で閉じられると false を返します。ボタンの文言は `AbubuUiSettings > Ok Label / Cancel Label`、ローカライズが有効なら翻訳テーブルの `abubu.common.ok` / `abubu.common.cancel` が使われます。トーストはポーズ中も表示され、続けて出したものは順番に表示されます。
 - プレハブのコンポーネントに `IPopup` を実装すると、`OnOpened` / `OnClosing` の通知を受け取れます。
 - プレハブは DI コンテナ経由で生成されるので、ポップアップのコンポーネントで `[Inject]` が使えます (シーンに SceneContext があればそのコンテナ、無ければ ProjectContext)。
-- `Resources/AbubuUiSettings` (Create > Abubu > UI Settings) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・シーン切り替え時に閉じる (`Close On Scene Change`、既定でオン)・Sorting Order を設定できます。
-- Cancel キーで閉じたい場合は `GameInput.Cancel.Subscribe(_ => Popups.Pop())` のように結線します。
+- `AbubuUiSettings` (`AbubuSettings > Ui` に割り当て) で、ポーズ連動 (`Pause While Open`)・背面の色・背面クリックで閉じる・シーン切り替え時に閉じる (`Close On Scene Change`、既定でオン)・Sorting Order を設定できます。
 
 ### 画面遷移
 
@@ -372,7 +390,9 @@ _screens.BackToRoot();
 ### ポップアップ・画面の共通設定
 
 - **開閉アニメーション** : ルートのコンポーネントに `IUiTransition` (`PlayShowAsync` / `PlayHideAsync`) を実装します。閉じるときはアニメーションが終わってから破棄 (画面は非表示) され、途中で同じ画面に戻った場合はキャンセルされます。ポーズ中も動かす場合は unscaled time で再生してください。
-- **初期選択** : ルートに `UI Initial Selection` を付けると、表示されたときに指定したボタン (未指定なら最初の操作可能な Selectable) を選択します。ポップアップを閉じると、開く前の選択に戻ります。
+- **初期選択** : ルートに `UI Initial Selection` を付けると、表示されたときに指定したボタン (未指定なら最初の操作可能な Selectable) を選択します。ポップアップを閉じると、開く前の選択に戻ります。`Select First On Open` をオンにすると、付けていなくても最初のボタンを選択します (ゲームパッド中心のゲーム向け)。
+- **フォーカスの維持** (Input System 導入時、`Keep Focus On Navigate` で既定オン) : マウスで背景をクリックして選択が外れた後や、ポップアップの裏のボタンが選ばれているときに、スティック・十字キーを倒す (またはゲームパッドに持ち替える) と、一番手前のポップアップ (無ければ画面) の中を選び直します。コードからは `UiNavigation.EnsureSelection()`。
+- **スクロール** : ScrollRect に `UI Scroll To Selection` を付けると、ゲームパッドで選択した項目が見えるように自動でスクロールします。
 - **生成方法** : インスタンスは `IUiFactory` で作ります。既定の `ContainerUiFactory` は DI コンテナ経由で生成するので `[Inject]` が使えます。Addressables からの読み込みや自前のプールを使う場合は、`IUiFactory` を AbubuInstaller より前にバインドして差し替えます。
 - **Backdrop** : `Backdrop Prefab` を指定すると、背面の覆いをプレハブで作ります (未指定なら `Backdrop Color` の Image)。
 - **Canvas** : 既定は Screen Space Overlay で、`Reference Resolution` / `Match Width Or Height` / `Sorting Order` を設定できます。VR・セーフエリア対応・独自の Canvas Scaler を使う場合は `Popup Canvas Prefab` / `Screen Canvas Prefab` に Canvas のプレハブを指定してください。
@@ -383,21 +403,59 @@ _screens.BackToRoot();
 ### ローカライズ
 
 - `AbubuSettings > Localization > Table` の `LocalizationTable` に翻訳を登録します。`Languages` に言語コード (`ja`, `en`, `zh-Hans` など) を並べ、`Entries` の `Values` を同じ順に書きます。
-- 量が多い場合は CSV (UTF-8) を `Csv Sources` に入れます。Google スプレッドシートの CSV 書き出しをそのまま使えます。
+- 量が多い場合は CSV / TSV (UTF-8) を `Csv Sources` に入れます。Google スプレッドシートの書き出しをそのまま使えます。`Tools > Abubu > Localization > Export CSV / Export TSV / Import CSV or TSV` (または LocalizationTable の右クリックメニュー) で、テーブルとスプレッドシートを行き来できます。
 
 ```csv
 key,ja,en
 menu.start,スタート,Start
-result.score,スコア: {0},Score: {0}
+result.score,スコア: {0:N0},Score: {0:N0}
+result.rank,{rank} 位,Rank {rank}
+item.count.one,{count} 個,{count} item
+item.count.other,{count} 個,{count} items
 # ここはコメント,,
 ```
 
-- 起動時の言語は「前回選んだ言語 → `Startup Language` → 端末の言語 → テーブルの先頭の言語」の順に決まります (`pt-BR` の端末で `pt` しか無ければ `pt` になります)。選んだ言語は保存されます (`Remember Language` で無効化可)。
-- 選択中の言語に翻訳が無いキーは `Fallback Language` (空ならテーブルの先頭の言語) から取り、それも無ければキーをそのまま返して警告を 1 回出します。
-- 言語選択 UI 用に `GetLanguageName("ja")` → "日本語" を用意しています。テーブルに `language.ja` のキーがあればそちらが使われます。
-- Text / TextMeshPro 以外 (UI Toolkit など) に表示する場合は、`Localized Text` の `On Changed` に処理を登録するか、`ILocalizationService.Language` を購読してください。
-- 翻訳の取得元は `ILocalizationSource` で差し替えられます (Unity Localization・サーバー配信など)。AbubuInstaller より前の Installer で先にバインドしてください。
-- `Validate Setup` は未翻訳のキー・重複キーを、`Generate Keys` は `LocKeys` を出力します。
+**言語の決まり方**
+
+- 起動時の言語は「前回選んだ言語 → `Startup Language` → 端末の言語 → `Fallback Language`」の順に決まります。言語コードの表記ゆれ (`zh_hant_tw` / `zh-Hant-TW`) と大文字小文字は気にしなくて構いません。
+- 翻訳が無いキーは「選択中の言語 → その親 (`zh-Hant-TW` → `zh-Hant` → `zh`) → `Fallback Language` → テーブルの先頭の言語」の順に探します。どこにも無いときに返すもの (`Missing Key`: キー / `[キー]` / 空文字) と警告の有無 (`Warn Missing Keys`) は設定できます。
+- 選んだ言語は保存されます (`Remember Language` で無効化可)。言語選択 UI 用に `GetLanguageName("ja")` → "日本語" があります (テーブルに `language.ja` があればそちらを使う)。
+
+**書式**
+
+- `Get(key, args)` は選択中の言語の書式 (`CultureInfo`) で数値・日付を書式化します (`{0:N0}` → 英語 `1,200` / ドイツ語 `1.200`)。
+- 名前付きのプレースホルダー: `Get("result.rank", new Dictionary<string, object> { ["rank"] = 3 })` → `{rank}`。値が無いプレースホルダーは例外にせず、そのまま残します。
+- 複数形: `GetPlural("item.count", n)` (`Loc.Plural`) は `.zero` (0 のときだけ・任意) / `.one` / `.few` / `.many` / `.other` から言語の規則で選び、`{0}` と `{count}` に数を入れます (CLDR の簡略版: 日中韓は常に other、ロシア語・ポーランド語は one / few / many など)。
+
+**フォント・アセット**
+
+- `Localization > Fonts` に言語ごとのフォント (TextMeshPro / UI.Text) を登録すると、`Localized Text` が言語に合わせて切り替えます (日中韓の文字が豆腐にならないように。`*` はほかのすべての言語用)。今のフォントのままにしたい Text は `Keep Font` をオンにします。
+- 文字入りの画像・ボイスなどは LocalizationTable の `Assets` に言語ごとに登録し、`Localized Image` (Image / SpriteRenderer)・`Localized Audio` (AudioSource) を付けるか、`GetAsset<T>(key)` / `LocalizedAsset<T>` で取り出します。
+- Text / TextMeshPro 以外 (UI Toolkit など) は、`Localized Text` の `On Changed` に処理を登録するか、`ILocalizationService.Changed` を購読してください。
+
+**取得元の差し替え・非同期読み込み**
+
+- 翻訳の取得元は `ILocalizationSource` で差し替えられます。サーバーや Addressables から読み込む場合は `IAsyncLocalizationSource` (と `IAsyncLocalizedAssetSource`) を実装します。読み込み中は `IsLoading` が true になり、言語の切り替えは `SetLanguageAsync` で待てます (続けて切り替えた場合は最後の言語だけが反映されます)。起動処理 (Boot) は最初の言語の読み込みを待ってから進みます。
+- **Unity Localization** (`com.unity.localization`) を使う場合: パッケージを入れると連携用のアセンブリが自動で有効になります。`Create > Abubu > Unity Localization Source` で設定アセットを作り (使う String Table Collection の名前を指定)、`AbubuSettings > Module Settings` に追加してください。文字列は Smart Format を通さず、Abubu の書式 (`{0}` / `{name}`) で書式化します。
+
+**確認用の機能**
+
+- `Pseudo Localization` (実行中は `PseudoLocalization = true`) をオンにすると、すべての文字列が `[!!Ŝţåŕţ~~!!]` のように伸びた飾り文字になります。翻訳漏れ (ハードコードされた文言) や、長い言語でのレイアウト崩れを翻訳前に見つけられます。
+- `Validate Setup` は未翻訳のキー・重複キーに加えて、シーン・プレハブの `Localized Text` で使われているのにどのテーブルにも無いキーを報告します。
+
+**パッケージ自身の文言**
+
+- 画面設定パネルの選択肢 (表示モード・FPS など) とダイアログの OK / Cancel は、翻訳テーブルの `abubu.*` のキーから取ります (無ければ英語)。`Setup Project` で作られるテーブルには、英語・日本語の訳 (`Runtime/Localization/BuiltIn/AbubuBuiltInStrings.csv`) が最初から入っています。View の Labels を自分で編集している場合は `Integration > Localize Package Ui` をオフにしてください。
+
+### 字幕
+
+```csharp
+_subtitles.Current.Subscribe(text => label.text = text ?? "").AddTo(this);   // ISubtitleService
+_subtitles.Show("story.intro.01", 3f);   // ボイス以外から出す (3 秒で消える)
+```
+
+- ボイス (`Sound.PlayVoice`) を再生すると、SoundLibrary の `Subtitle Key` (未設定ならボイスのキー) の翻訳が字幕として流れ、ボイスが終わると消えます。翻訳が無いボイスでは字幕を出しません。
+- `Subtitle Text` コンポーネントを Text / TextMeshPro に付けると表示されます (字幕が無いときは `Hide Root` を非表示にする)。言語を切り替えると、表示中の字幕も新しい言語に変わります。
 
 ### ライフサイクル / 自動保存
 
@@ -434,6 +492,8 @@ Logger.Warning("HP がマイナスです");
 
 - `DebugOverlay` をシーンに置く (`GameObject > Abubu > Debug Overlay`) か、`DebugOverlay.EnsureExists()` を呼ぶと、FPS・メモリ・timeScale・解像度が表示されます。
 - 画面左上の `Dbg` ボタンかキー F1 で詳細の表示/非表示を切り替えます。
+- `DebugOverlay.RegisterCommand` / `RegisterToggle` / `RegisterSlider` でボタン・スイッチ・スライダー (ステージスキップ・無敵など) を追加できます。カテゴリごとにまとめて表示され、登録したオブジェクトが破棄されると自動で消えます。
+- ゲームパッドでも操作できます (L3 + R3 長押しで表示、十字キーで選択、A で実行)。使っている間は `DebugOverlay.HasGamepadFocus` が true になるので、ゲーム側の入力を無視するのに使えます。ログの末尾の表示 (既定オフ) もあります。
 - `DebugOverlay.Register("score", () => score.ToString())` で任意の項目を追加できます。リリースビルドでは既定で何も表示しません (表示したい場合は Scripting Define Symbols に `ABUBU_DEBUG_OVERLAY_IN_RELEASE` を追加します)。
 
 ### セットアップの診断
@@ -444,6 +504,9 @@ Logger.Warning("HP がマイナスです");
 - `AbubuSettings` のライブラリ未設定
 - Boot シーン / 最初のシーンが Build Profiles に入っているか
 - SoundLibrary / EffectLibrary の空キー・重複キー・Clip / Prefab 未設定・存在しない SE キー
+- LocalizationTable の重複キー・未翻訳のキー、`Localized Text` で使われているのにテーブルに無いキー
+- 同名のファイルに無く Missing Script になるクラス
+- セーブの保存先フォルダ名の衝突の可能性
 
 ### Addressables (導入時のみ)
 
@@ -516,7 +579,8 @@ public sealed class MyInstaller : MonoInstaller
 
 ## カスタマイズ
 
-- 既定実装 (`ISceneTransition` / `ISaveStorage` / `ISaveSerializer` / `ILocalizationSource` / `IUiFactory`) は `IfNotBound` で登録されています。差し替えるときは、ProjectContext の Installers で **AbubuInstaller より前** に置いた Installer で先にバインドします。
+- 既定実装 (`ISceneTransition` / `ISaveStorage` / `ISaveSerializer` / `ILocalizationSource` / `IUiFactory` / `IDialogLabels` / `IGraphicsSettingsLabels`) は、すでにバインドされていれば登録しません。
+- `Setup Project` の出力先 (`Setup Folder` / `Project Context Path`) は `Edit > Project Settings > Abubu` で変えられます。差し替えるときは、ProjectContext の Installers で **AbubuInstaller より前** に置いた Installer で先にバインドします。
 
 ```csharp
 Container.Bind<ISceneTransition>().To<MyTransition>().AsSingle();

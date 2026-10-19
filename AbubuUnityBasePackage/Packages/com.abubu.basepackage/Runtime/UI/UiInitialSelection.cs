@@ -7,6 +7,10 @@ namespace Abubu.UI
     /// <summary>
     /// ポップアップ・画面のルートに付けると、表示されたときに指定したボタンなどを選択状態にする (ゲームパッド・キーボード操作用)。
     /// ポップアップを閉じたときは、開く前に選択していたものに選択が戻る。
+    /// <code>
+    /// // ルートに付けて Target に最初のボタンを指定するだけ。コードからは:
+    /// GetComponent&lt;UiInitialSelection&gt;().Target = okButton;
+    /// </code>
     /// </summary>
     [AddComponentMenu("Abubu/UI Initial Selection")]
     [DisallowMultipleComponent]
@@ -22,24 +26,16 @@ namespace Abubu.UI
         }
 
         /// <summary>選択するもの (Target が未設定・操作不可なら、子の中で最初の操作可能な Selectable)</summary>
-        public GameObject Resolve()
-        {
-            if (target != null && target.IsActive() && target.IsInteractable()) return target.gameObject;
-            foreach (var selectable in GetComponentsInChildren<Selectable>())
-            {
-                if (selectable.IsActive() && selectable.IsInteractable()) return selectable.gameObject;
-            }
-            return null;
-        }
+        public GameObject Resolve() => target != null && IsUsable(target) ? target.gameObject : FindFirstSelectable(gameObject);
 
-        /// <summary>root に付いていれば、その選択先を選択する。EventSystem が無ければ何もしない</summary>
-        internal static void Apply(GameObject root)
+        /// <summary>root に付いていれば、その選択先を選択する (force なら付いていなくても最初の Selectable を選ぶ)。EventSystem が無ければ何もしない</summary>
+        internal static void Apply(GameObject root, bool force = false)
         {
             if (root == null || EventSystem.current == null) return;
             var selection = root.GetComponent<UiInitialSelection>();
-            if (selection == null) return;
+            if (selection == null && !force) return;
 
-            var selected = selection.Resolve();
+            var selected = selection != null ? selection.Resolve() : FindFirstSelectable(root);
             if (selected != null) EventSystem.current.SetSelectedGameObject(selected);
         }
 
@@ -52,5 +48,19 @@ namespace Abubu.UI
 
         /// <summary>現在選択されているもの</summary>
         internal static GameObject Current => EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+
+        /// <summary>root の子の中で最初の操作可能な Selectable</summary>
+        public static GameObject FindFirstSelectable(GameObject root)
+        {
+            if (root == null) return null;
+            foreach (var selectable in root.GetComponentsInChildren<Selectable>())
+            {
+                if (IsUsable(selectable)) return selectable.gameObject;
+            }
+            return null;
+        }
+
+        private static bool IsUsable(Selectable selectable) =>
+            selectable.isActiveAndEnabled && selectable.IsInteractable() && selectable.navigation.mode != Navigation.Mode.None;
     }
 }

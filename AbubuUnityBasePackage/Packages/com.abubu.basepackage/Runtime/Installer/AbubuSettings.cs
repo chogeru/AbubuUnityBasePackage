@@ -90,5 +90,8 @@ namespace Abubu
     {
         [Tooltip("シーン遷移時にすべてのポーズを解除する (ポーズメニューごとシーンが破棄されて Resume されないのを防ぐ)。DontDestroyOnLoad 側でポーズを持ち越したい場合はオフにする")]
         public bool ResumePauseOnSceneChange = true;
+
+        [Tooltip("画面設定 UI の選択肢 (表示モード・FPS など) をローカライズの翻訳テーブルから取る (Localization が有効なとき)。View の Labels を自分で編集している場合はオフにする")]
+        public bool LocalizePackageUi = true;
     }
 }

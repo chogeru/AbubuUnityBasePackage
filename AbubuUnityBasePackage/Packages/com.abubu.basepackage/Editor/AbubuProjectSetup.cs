@@ -20,17 +20,36 @@ namespace Abubu.Editor
     public static class AbubuProjectSetup
     {
         /// <summary>生成するアセット一式の置き場所</summary>
-        private const string RootFolder = "Assets/Abubu";
-        private const string SettingsPath = RootFolder + "/AbubuSettings.asset";
-        private const string LibraryPath = RootFolder + "/SoundLibrary.asset";
-        private const string EffectLibraryPath = RootFolder + "/EffectLibrary.asset";
-        private const string LocalizationTablePath = RootFolder + "/LocalizationTable.asset";
+        /// <remarks>場所は Edit > Project Settings > Abubu > Setup Folder で変えられる (既定 Assets/Abubu)</remarks>
+        private static string RootFolder
+        {
+            get
+            {
+                var folder = AbubuEditorSettings.instance.SetupFolder;
+                return string.IsNullOrWhiteSpace(folder) ? "Assets/Abubu" : folder.Trim().TrimEnd('/');
+            }
+        }
+
+        private static string SettingsPath => RootFolder + "/AbubuSettings.asset";
+        private static string LibraryPath => RootFolder + "/SoundLibrary.asset";
+        private static string EffectLibraryPath => RootFolder + "/EffectLibrary.asset";
+        private static string LocalizationTablePath => RootFolder + "/LocalizationTable.asset";
+
+        /// <summary>パッケージの UI (画面設定パネルなど) が使う文言。新しく作る翻訳テーブルの Csv Sources に入れる</summary>
+        private const string BuiltInStringsPath = "Packages/com.abubu.basepackage/Runtime/Localization/BuiltIn/AbubuBuiltInStrings.csv";
 
         /// <summary>
         /// ProjectContext が見つからなかったときに新規作成するパス。
         /// Zenject は Resources/ProjectContext.prefab を自動で読み込む。
         /// </summary>
-        private const string DefaultProjectContextPath = "Assets/Resources/ProjectContext.prefab";
+        private static string DefaultProjectContextPath
+        {
+            get
+            {
+                var path = AbubuEditorSettings.instance.ProjectContextPath;
+                return string.IsNullOrWhiteSpace(path) ? "Assets/Resources/ProjectContext.prefab" : path.Trim();
+            }
+        }
 
         /// <summary>
         /// セットアップ本体。設定アセットを用意し、ProjectContext に AbubuInstaller を組み込む。
@@ -43,7 +62,9 @@ namespace Abubu.Editor
             // 各ライブラリと設定アセットを用意し、設定側の参照が空ならライブラリを割り当てる
             var library = LoadOrCreate<SoundLibrary>(LibraryPath);
             var effectLibrary = LoadOrCreate<EffectLibrary>(EffectLibraryPath);
+            var isNewTable = AssetDatabase.LoadAssetAtPath<LocalizationTable>(LocalizationTablePath) == null;
             var localizationTable = LoadOrCreate<LocalizationTable>(LocalizationTablePath);
+            if (isNewTable) AddBuiltInStrings(localizationTable);
             var settings = LoadOrCreate<AbubuSettings>(SettingsPath);
             if (settings.Sound.Library == null) settings.Sound.Library = library;
             if (settings.Effect.Library == null) settings.Effect.Library = effectLibrary;
@@ -77,7 +98,7 @@ namespace Abubu.Editor
         /// </summary>
         private static void CreateProjectContext(AbubuSettings settings)
         {
-            EnsureFolder("Assets/Resources");
+            EnsureFolder(System.IO.Path.GetDirectoryName(DefaultProjectContextPath)!.Replace('\\', '/'));
 
             // 一時的にシーンへ GameObject を作ってプレハブ化し、最後に必ず破棄する
             var go = new GameObject("ProjectContext");
@@ -139,6 +160,16 @@ namespace Abubu.Editor
             var prop = so.FindProperty("settings");
             if (prop.objectReferenceValue == null) prop.objectReferenceValue = settings;
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>パッケージ同梱の文言 (AbubuBuiltInStrings.csv) を翻訳テーブルの Csv Sources に追加する</summary>
+        private static void AddBuiltInStrings(LocalizationTable table)
+        {
+            var builtIn = AssetDatabase.LoadAssetAtPath<TextAsset>(BuiltInStringsPath);
+            if (builtIn == null || table.CsvSources.Contains(builtIn)) return;
+            table.CsvSources.Add(builtIn);
+            if (!table.Languages.Contains("en")) table.Languages.Add("en");
+            EditorUtility.SetDirty(table);
         }
 
         /// <summary>

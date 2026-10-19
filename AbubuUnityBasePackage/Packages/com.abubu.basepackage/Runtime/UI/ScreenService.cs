@@ -255,7 +255,7 @@ namespace Abubu.UI
                 }
             }
 
-            UiInitialSelection.Apply(entry.Instance);
+            UiInitialSelection.Apply(entry.Instance, _settings.SelectFirstOnOpen);
             // 閉じるアニメーションの途中で戻ってきた場合は、それを取り消して開くアニメーションを再生する
             _transitions.Show(entry.Instance);
         }
@@ -366,7 +366,13 @@ namespace Abubu
         public static int Count => Service?.Count.CurrentValue ?? 0;
     }
 
-    /// <summary>「戻る」操作の共通処理</summary>
+    /// <summary>
+    /// 「戻る」とフォーカス (ゲームパッド・キーボードでの選択) の共通処理。
+    /// <code>
+    /// UiNavigation.Back();             // ポップアップがあれば閉じ、無ければ前の画面に戻る
+    /// UiNavigation.EnsureSelection();  // 何も選択されていなければ、一番手前の UI の最初のボタンを選ぶ
+    /// </code>
+    /// </summary>
     public static class UiNavigation
     {
         /// <summary>一番手前のポップアップを閉じる。ポップアップが無ければ前の画面に戻る。何もしなかったら false</summary>
@@ -374,5 +380,26 @@ namespace Abubu
 
         public static bool Back(IPopupService popups, IScreenService screens) =>
             (popups != null && popups.Pop()) || (screens != null && screens.Back());
+
+        /// <summary>
+        /// 選択が無い・一番手前の UI の外にある (マウスで背景をクリックした、ポップアップの裏のボタンが選ばれている など) ときに、
+        /// 一番手前のポップアップ (無ければ画面) の最初の選択先を選び直す。ゲームパッドの操作を受けたときに呼ぶ
+        /// </summary>
+        /// <returns>選び直したら true</returns>
+        public static bool EnsureSelection() => EnsureSelection(Popups.Service, Screens.Service);
+
+        public static bool EnsureSelection(IPopupService popups, IScreenService screens)
+        {
+            var root = popups?.Current;
+            if (root == null) root = screens?.Current;
+            if (root == null || !root.activeInHierarchy) return false;
+
+            var selected = UiInitialSelection.Current;
+            if (selected != null && selected.activeInHierarchy && selected.transform.IsChildOf(root.transform)) return false;
+
+            var before = selected;
+            UiInitialSelection.Apply(root, force: true);
+            return UiInitialSelection.Current != before;
+        }
     }
 }

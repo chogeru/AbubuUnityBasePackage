@@ -77,7 +77,9 @@ namespace Abubu.Editor
 
             foreach (var library in FindAssets<SoundLibrary>()) CheckSoundLibrary(library, issues);
             foreach (var library in FindAssets<EffectLibrary>()) CheckEffectLibrary(library, issues);
-            foreach (var table in FindAssets<LocalizationTable>()) CheckLocalizationTable(table, issues);
+            var tables = FindAssets<LocalizationTable>();
+            foreach (var table in tables) CheckLocalizationTable(table, issues);
+            CheckLocalizedTextKeys(tables, issues);
 
             foreach (var type in FindUnboundScriptTypes())
             {
@@ -91,21 +93,76 @@ namespace Abubu.Editor
         /// MonoBehaviour / ScriptableObject を継承しているのに、ファイル名と一致せず Unity のスクリプトとして認識されない型を探す。
         /// (複数のクラスを 1 ファイルに置くと起きる。Abubu 系のアセンブリのみ対象)
         /// </summary>
-        public static List<System.Type> FindUnboundScriptTypes()
-        {
-            var bound = new HashSet<System.Type>();
-            foreach (var guid in AssetDatabase.FindAssets("t:MonoScript"))
-            {
-                var type = AssetDatabase.LoadAssetAtPath<MonoScript>(AssetDatabase.GUIDToAssetPath(guid))?.GetClass();
-                if (type != null) bound.Add(type);
-            }
-
-            return TypeCache.GetTypesDerivedFrom<MonoBehaviour>()
+        public static List<System.Type> FindUnboundScriptTypes() =>
+            TypeCache.GetTypesDerivedFrom<MonoBehaviour>()
                 .Concat(TypeCache.GetTypesDerivedFrom<ScriptableObject>())
                 .Where(t => !t.IsAbstract && !t.IsGenericType && !t.IsNested && t.Assembly.GetName().Name.StartsWith("Abubu"))
-                .Where(t => !bound.Contains(t))
+                .Where(t => FindScript(t) == null)
                 .OrderBy(t => t.FullName)
                 .ToList();
+
+        /// <summary>
+        /// 型に対応する MonoScript (クラス名と同じ名前のファイル)。無ければ null。
+        /// プロジェクトの全スクリプトを読み込むと重いので、型の名前で絞り込んでから読み込む
+        /// </summary>
+        private static MonoScript FindScript(System.Type type)
+        {
+            foreach (var guid in AssetDatabase.FindAssets($"{type.Name} t:MonoScript"))
+            {
+                var script = AssetDatabase.LoadAssetAtPath<MonoScript>(AssetDatabase.GUIDToAssetPath(guid));
+                if (script != null && script.GetClass() == type) return script;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// シーン・プレハブに置かれた LocalizedText のキーのうち、どの翻訳テーブルにも無いものを探す。
+        /// アセットを開かずにテキスト (YAML) を読んで調べる (Force Text シリアライズのとき)
+        /// </summary>
+        private static void CheckLocalizedTextKeys(List<LocalizationTable> tables, List<Issue> issues)
+        {
+            if (tables.Count == 0 || EditorSettings.serializationMode != SerializationMode.ForceText) return;
+            var script = FindScript(typeof(LocalizedText));
+            if (script == null || !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(script, out var scriptGuid, out long _)) return;
+
+            var known = new HashSet<string>(tables.SelectMany(t => t.GetAllKeys()));
+            var reported = new HashSet<string>();
+            foreach (var path in AssetDatabase.FindAssets("t:Prefab t:Scene", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath).Distinct())
+            {
+                foreach (var key in ReadLocalizedTextKeys(path, scriptGuid))
+                {
+                    if (known.Contains(key) || !reported.Add(key)) continue;
+                    issues.Add(new Issue(Level.Warning, $"{path}: LocalizedText のキー \"{key}\" がどの翻訳テーブルにもありません。{KeySuggestion.Hint(key, known)}"));
+                }
+            }
+        }
+
+        /// <summary>シーン・プレハブの YAML から、指定したスクリプトのコンポーネントの key フィールドを読む</summary>
+        internal static IEnumerable<string> ReadLocalizedTextKeys(string path, string scriptGuid)
+        {
+            string text;
+            try
+            {
+                text = System.IO.File.ReadAllText(path);
+            }
+            catch (System.IO.IOException)
+            {
+                yield break;
+            }
+            if (!text.Contains(scriptGuid)) yield break;
+
+            foreach (var block in text.Split(new[] { "\n--- " }, System.StringSplitOptions.None))
+            {
+                if (!block.Contains("guid: " + scriptGuid)) continue;
+                foreach (var rawLine in block.Split('\n'))
+                {
+                    var line = rawLine.TrimEnd('\r');
+                    if (!line.StartsWith("  key: ", System.StringComparison.Ordinal)) continue;
+                    var value = line.Substring("  key: ".Length).Trim();
+                    if (value.Length >= 2 && (value[0] == '\'' || value[0] == '"')) value = value.Substring(1, value.Length - 2);
+                    if (value.Length > 0) yield return value;
+                }
+            }
         }
 
         private static void CheckProjectContext(List<Issue> issues)
@@ -186,7 +243,7 @@ namespace Abubu.Editor
                     }
 
                     if (!seen.Add(entry.Key)) issues.Add(new Issue(Level.Warning, $"{name}: {category} のキー \"{entry.Key}\" が重複しています (先に登録されたものだけが使われます)。"));
-                    if (!entry.HasClip || entry.Clips.Any(c => c == null)) issues.Add(new Issue(Level.Warning, $"{name}: {category} \"{entry.Key}\" の Clip が未設定です。"));
+                    if (!entry.HasSource || (entry.HasClip && entry.Clips.Any(c => c == null))) issues.Add(new Issue(Level.Warning, $"{name}: {category} \"{entry.Key}\" の Clip が未設定です。"));
                 }
             }
         }
