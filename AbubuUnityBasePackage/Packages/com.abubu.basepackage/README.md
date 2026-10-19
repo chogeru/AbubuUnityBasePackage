@@ -102,6 +102,9 @@ GameEvents.Receive<EnemyDied>().Subscribe(e => score += e.Score).AddTo(this);
 // セーブ
 Saves.Save("highscore", 1200);
 var best = Saves.Load("highscore", 0);
+await Saves.SaveAsync("progress", progress);   // 書き込みはバックグラウンド (UniTask)
+await Saves.FlushAsync();                      // 書き込み待ちをすべて終わらせる
+Saves.OnFailed.Subscribe(f => Popups.Toast($"保存に失敗しました ({f.Reason})")).AddTo(this);
 
 // 入力 (Input System 導入時)
 var move = GameInput.Move;

@@ -8,7 +8,6 @@ using Abubu.Graphics;
 using Abubu.Localization;
 using Abubu.Pause;
 using Abubu.Pool;
-using Abubu.Presentation;
 using Abubu.Save;
 using Abubu.Scene;
 using Zenject;
@@ -97,7 +96,7 @@ namespace Abubu.Installers
         }
     }
 
-    /// <summary>ISceneService (+ 差し替え可能な ISceneTransition) とロード画面</summary>
+    /// <summary>ISceneService (+ 差し替え可能な ISceneTransition)。ロード画面は Abubu.Scene.UI が登録する</summary>
     public static class SceneInstaller
     {
         public static void Install(DiContainer container, SceneSettings settings)
@@ -107,7 +106,6 @@ namespace Abubu.Installers
             if (!container.HasBinding<ISceneTransition>()) container.Bind(typeof(ISceneTransition), typeof(IDisposable)).To<FadeTransition>().AsSingle();
             if (container.HasBinding<ISceneService>()) return;
             container.BindInterfacesTo<SceneService>().AsSingle();
-            container.BindInterfacesTo<SceneLoadingScreen>().AsSingle();
         }
     }
 
