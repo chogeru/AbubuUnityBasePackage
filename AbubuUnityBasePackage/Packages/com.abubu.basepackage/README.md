@@ -381,6 +381,9 @@ Container.BindAbubuMessage<EnemyDied>();   // Installer
 - **振動** : `IHapticsService` (`GameInput.Haptics` / `GameInput.Rumble` / `GameInput.StopRumble`) で Light / Medium / Heavy などのプリセットを鳴らせます。全体の強さとオン・オフは保存され、ポーズ中・フォーカスが外れている間は止まります。
 - **キー割り当て画面** : `Abubu.Input.UI` の `RebindView` / `RebindPresenter` (View は `IRebindView` で差し替え可) で、キー・ボタンの割り当て画面を作れます。重複したときの扱い (Allow / Swap / Reject)、複合入力 (WASD など) に対応しています。ローカライズが有効なら、文言は翻訳テーブルの `abubu.rebind.*` と `abubu.input.action.*` (例: `abubu.input.action.jump`) から取ります (`AbubuBuiltInStrings.csv` に英語・日本語あり)。
 - `InputCursorAutoHide` (既定オフ) で、ゲームパッド操作中にマウスカーソルを隠せます。
+- **ゲームパッドの抜き差し** : `PauseOnGamepadDisconnect` (既定オン) で、操作中のゲームパッドが抜けるとポーズし、「コントローラーを接続してください」のダイアログを出します (UI モジュールがあるとき。接続し直すと閉じ、「キーボードで続ける」で待つのをやめる。表示中は B / Esc では閉じない)。文言は `abubu.input.reconnect.*`。抜き差しは `IInputDeviceService.DeviceLost` / `DeviceRegained` でも分かります。
+- **ボタン案内** : `UiButtonPromptBar` を置くと、一番手前のポップアップ・画面の `IUiPromptProvider` の案内を、操作中のデバイスのアイコン付きで表示します。`InputPromptLabel` / `InputGlyphText.Format("Press {Player/Jump}")` で文中にアイコンを入れられます。キー割り当て画面は `GameObject > Abubu > Rebind Panel` で作れます。
+- キー割り当ての入力待ち中 (`IInputService.IsRebinding`) は、B / Esc で戻らず、UI の選択も動きません。デバッグメニューをゲームパッドで操作している間 (`DebugOverlay.GamepadFocusChanged`) は、ゲームの入力が止まります。
 - **以前のバージョンからの移行 (割り当て)** : `IInputService` に `ResetBinding` / `SetBindingOverride` / `SaveBindings` / `BindingsChanged` が増えました。`RebindAsync` は既定で、同じ種類のデバイスの操作だけを受け付けます (`RebindMatchBindingDevice`)。
 
 ### ポーズ
@@ -551,7 +554,7 @@ Logger.Warning("HP がマイナスです");
 - LocalizationTable の重複キー・未翻訳のキー、`Localized Text` で使われているのにテーブルに無いキー
 - 同名のファイルに無く Missing Script になるクラス
 - セーブの保存先フォルダ名の衝突の可能性
-- Active Input Handling と EventSystem の Input Module の組み合わせ (StandaloneInputModule が Input System のみの設定で使われている)、InputSystemUIInputModule の Actions Asset 未設定、Input Actions に UI/Navigate・UI/Cancel があるか
+- Active Input Handling と EventSystem の Input Module の組み合わせ (StandaloneInputModule が Input System のみの設定で使われている)、InputSystemUIInputModule の Actions Asset 未設定・プロジェクト共通の Input Actions (InputSystem.actions) と違う、Input Actions に UI/Navigate・UI/Cancel があるか
 
 ### Addressables (導入時のみ)
 
@@ -604,7 +607,7 @@ public sealed class MyInstaller : MonoInstaller
 | `Abubu.UI.Localization` | ダイアログの文言・フォントの翻訳 |
 | `Abubu.Graphics.UI.Localization` | 画面設定パネルの選択肢の翻訳 |
 | `Abubu.Input.UI.Localization` | キー割り当て画面の文言の翻訳 |
-| `Abubu.UI.Input` | Cancel で戻る・フォーカスの維持・EventSystem の用意・長押しボタンの入力 |
+| `Abubu.UI.Input` | Cancel で戻る・フォーカスの維持・EventSystem の用意・長押しボタンの入力・ゲームパッドの再接続ダイアログ・ボタン案内バーへの受け渡し |
 
 ## 既存プロジェクトへの導入
 

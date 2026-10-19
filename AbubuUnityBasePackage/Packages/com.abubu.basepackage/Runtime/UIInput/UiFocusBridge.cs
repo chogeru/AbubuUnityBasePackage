@@ -66,6 +66,8 @@ namespace Abubu.UI
             try
             {
                 await UniTask.Yield(PlayerLoopTiming.PostLateUpdate, ct);
+                // キー割り当ての入力待ち中は、押されたボタンを割り当てに使うので選択を動かさない
+                if (_input.IsRebinding.CurrentValue) return;
                 UiNavigation.EnsureSelection(_popups, _screens);
             }
             catch (OperationCanceledException)

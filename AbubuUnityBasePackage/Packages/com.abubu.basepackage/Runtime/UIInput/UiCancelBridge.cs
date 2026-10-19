@@ -76,6 +76,10 @@ namespace Abubu.UI
             container.Bind<IUiSubmitHoldSource>().To<InputServiceSubmitHold>().AsSingle().IfNotBound();
             container.Bind<IUiEventSystemFactory>().To<InputSystemEventSystemFactory>().AsSingle().IfNotBound();
             container.Bind<IUiBackBlocker>().To<BuiltInUiBackBlocker>().AsSingle();
+            // ゲームパッドが抜けたときの「コントローラーを接続してください」(表示中は戻るで閉じない)
+            container.BindInterfacesTo<GamepadReconnectBridge>().AsSingle().NonLazy();
+            // 一番手前の UI の操作の案内を、ボタン案内バー (Abubu.Input.UI) に渡す
+            container.Bind<Abubu.Input.UI.IButtonPromptSource>().To<UiPromptButtonSource>().AsSingle().IfNotBound();
         }
     }
 }

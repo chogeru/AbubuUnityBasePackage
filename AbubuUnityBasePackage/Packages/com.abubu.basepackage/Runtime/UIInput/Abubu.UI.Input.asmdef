@@ -11,7 +11,9 @@
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "UniTask",
-        "Abubu.Debugging"
+        "Abubu.Debugging",
+        "Abubu.Input.UI",
+        "Abubu.Localization"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -32,5 +32,8 @@ abubu.input.action.attack,Attack,攻撃
 abubu.input.action.interact,Interact,調べる
 abubu.input.action.submit,Submit,決定
 abubu.input.action.cancel,Cancel,キャンセル
+abubu.input.reconnect.title,Controller disconnected,コントローラーが切断されました
+abubu.input.reconnect.message,Please connect a controller.,コントローラーを接続してください。
+abubu.input.reconnect.keyboard,Continue with keyboard,キーボードで続ける
 language.en,English,English
 language.ja,日本語,日本語

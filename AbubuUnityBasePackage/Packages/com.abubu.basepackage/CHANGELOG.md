@@ -8,6 +8,8 @@
 ## [Unreleased]
 
 ### Breaking Changes
+- `IInputService` に `CurrentScheme` / `IsRebinding`、`IInputDeviceService` に `CurrentScheme` / `DeviceLost` / `DeviceRegained` (`Observable<InputDeviceConnection>`) を追加。`IRumbleBackend` / `IHapticsService.SupportsRumble`、`IInputGlyphService.GetCompositeGlyphs` を追加 (実装している場合は対応が必要)。`RebindAsync` は同時に呼ばれると false を返す。`RebindExcludedPaths` の既定に `<Mouse>/scroll` を追加
+- キー割り当ての入力待ち中は B / Esc で戻らず、UI の選択も動かない。デバッグメニューをゲームパッドで操作している間はゲームの入力を止める
 - アセンブリの分割: `LocalizedText` / `LocalizedImage` / `LocalizedAudio` / `SubtitleText` を `Abubu.Localization.UI` に移動 (.meta の GUID は維持)。言語ごとのフォントは `LocalizationSettings.Fonts` から `LocalizationFontSettings` (Module Settings に入れる) / `ILocalizedFontService` に移動し、`ILocalizationService.GetFont` を削除。翻訳の連携 (`LocalizedDialogLabels` / `LocalizedGraphicsSettingsLabels` など) を連携用アセンブリに移動し、`Abubu.Installer` は uGUI / TMP に依存しなくなった
 - `AbubuSettings.Ui` を削除 (`AbubuUiSettings` は `Module Settings` に入れる)。`AbubuSettings` のフィールド名を `Effect` → `Effects`、`App` → `AppLifecycle`、`GraphicsOptions` → `Graphics` に変更 (保存済みの値は引き継がれる)
 - `AbubuUiSettings.SelectFirstOnOpen` を `SelectOnOpen` (Never / Auto / Always) に変更。`BackOnCancel` の既定値をオンに変更
@@ -27,6 +29,7 @@
 - `Log` クラスを `AbubuLog` に改名 (このバージョンで追加したもの)
 
 ### Added
+- ゲームパッドが抜けたときのポーズ (`PauseOnGamepadDisconnect`、既定オン) と「コントローラーを接続してください」のダイアログ (`GamepadReconnectBridge`)、ボタン案内バー (`UiButtonPromptBar` / `InputPromptLabel` / `InputGlyphText`) と一番手前の UI の案内の受け渡し (`UiPromptButtonSource`)、`GameObject > Abubu > Rebind Panel`、`Validate Setup` で InputSystemUIInputModule のアクションがプロジェクト共通のものと違う場合の確認
 - UI のコントローラー対応: `UiFocusScope` (選択をポップアップの中に閉じ込める。ポップアップには自動で付く)、下に重なったポップアップの操作を止める、`AbubuUiSettings.SelectOnOpen` (Auto: ゲームパッド操作中だけ選択し、マウス操作中は裏の選択を外す)、確認ダイアログの初期選択を Cancel に (`ConfirmDefaultButton`)、`IUiBackBlocker` と `UiNavigation.HandledBackThisFrame`、方向入力・決定で選び直すときはフレームの最後に行う
 - `UiEventSystemProvider` (EventSystem が無ければシーンをまたいで残るものを用意する。`EnsureEventSystem`)、`UiSafeArea` (`UseSafeArea`)、`UiHoldButton` (長押しで確定)、`IUiPromptProvider` / `IUiPromptService` (操作の案内)、`IPopupService.Changed` / `IScreenService.Changed`、`AbubuUiSettings.DefaultFont` / `DefaultTmpFont` / `WidgetStyle` / トーストのフェード時間
 - `IAppQuitHandler` / `IAppSuspendFinalizer` (中断・終了の通知がすべて終わってから呼ばれる。セーブの Flush に使う)

@@ -156,8 +156,9 @@ namespace Abubu.Editor
             var standalone = FindScriptId(typeof(UnityEngine.EventSystems.StandaloneInputModule));
             var inputSystem = inputSystemType != null ? FindScriptId(inputSystemType) : null;
             if (standalone == null && inputSystem == null) return;
+            var projectActionsGuid = FindProjectActionsGuid();
 
-            var paths = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path)
+            var paths =EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path)
                 .Concat(AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath))
                 .Distinct();
             foreach (var path in paths)
@@ -179,6 +180,10 @@ namespace Abubu.Editor
                 if (inputSystem != null && text.Contains(inputSystem) && HasModuleWithoutActions(text, inputSystem))
                 {
                     issues.Add(new Issue(Level.Warning, $"{path}: InputSystemUIInputModule の Actions Asset が未設定です。ゲームパッド・キーボードで UI を操作できません。"));
+                }
+                if (inputSystem != null && projectActionsGuid != null && text.Contains(inputSystem) && HasModuleWithOtherActions(text, inputSystem, projectActionsGuid))
+                {
+                    issues.Add(new Issue(Level.Warning, $"{path}: InputSystemUIInputModule の Actions Asset がプロジェクト共通の Input Actions (InputSystem.actions) と違います。UI の操作とゲームの操作で割り当て (キーコンフィグ) が食い違う可能性があります。"));
                 }
             }
 
@@ -221,6 +226,27 @@ namespace Abubu.Editor
             foreach (var block in text.Split(new[] { "\n--- " }, System.StringSplitOptions.None))
             {
                 if (block.Contains(scriptId) && block.Contains("m_ActionsAsset: {fileID: 0}")) return true;
+            }
+            return false;
+        }
+
+        /// <summary>プロジェクト共通の Input Actions (InputSystem.actions) の GUID。設定されていなければ null (Input System は型名で調べる)</summary>
+        private static string FindProjectActionsGuid()
+        {
+            var inputSystem = System.Type.GetType("UnityEngine.InputSystem.InputSystem, Unity.InputSystem");
+            var property = inputSystem?.GetProperty("actions", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (property?.GetValue(null) is not Object actions) return null;
+            return AssetDatabase.TryGetGUIDAndLocalFileIdentifier(actions, out var guid, out long _) ? guid : null;
+        }
+
+        /// <summary>そのスクリプトのコンポーネントの m_ActionsAsset が、設定済みで別のアセットを指しているか</summary>
+        private static bool HasModuleWithOtherActions(string text, string scriptId, string projectActionsGuid)
+        {
+            foreach (var block in text.Split(new[] { "\n--- " }, System.StringSplitOptions.None))
+            {
+                if (!block.Contains(scriptId)) continue;
+                var match = System.Text.RegularExpressions.Regex.Match(block, @"m_ActionsAsset: \{fileID: -?\d+, guid: ([0-9a-f]+)");
+                if (match.Success && match.Groups[1].Value != projectActionsGuid) return true;
             }
             return false;
         }

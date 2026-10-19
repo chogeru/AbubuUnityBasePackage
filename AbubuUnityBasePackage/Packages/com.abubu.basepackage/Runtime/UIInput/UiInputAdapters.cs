@@ -53,15 +53,21 @@ namespace Abubu.UI
     }
 
     /// <summary>
-    /// 「戻る」を止めるべき状態: 選択中の UI が自分で Cancel を処理する (ICancelHandler)、Dropdown のリストが開いている、
-    /// デバッグメニューをゲームパッドで操作中
+    /// 「戻る」を止めるべき状態: キー割り当ての入力待ち中、選択中の UI が自分で Cancel を処理する (ICancelHandler)、
+    /// Dropdown のリストが開いている、デバッグメニューをゲームパッドで操作中
     /// </summary>
     public sealed class BuiltInUiBackBlocker : IUiBackBlocker
     {
+        private readonly IInputService _input;
+
+        public BuiltInUiBackBlocker([InjectOptional] IInputService input = null) => _input = input;
+
         public bool BlocksBack
         {
             get
             {
+                // キー割り当ての入力待ち中 (B / Esc は割り当ての取り消しに使われる)
+                if (_input != null && _input.IsRebinding.CurrentValue) return true;
                 if (DebugOverlay.HasGamepadFocus) return true;
 
                 var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
